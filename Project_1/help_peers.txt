@@ -1,0 +1,32 @@
+Command:                Usage:
+ register               Sends registration message to the Register Server and
+                        provides information about the port to which its RFC
+                        server listens.
+
+ leave                  Sends leave requests to the Register Server. Leaves the
+                        P2P-DI system, becomes inactive and invisible for other
+                        peers and register server in the network. Closes RFC
+                        server port. The program remains running. To terminate
+                        the program see 'exit'. To join P2P-DI system back, use
+                        'register' or 'keepalive' commands.
+
+ pquery                 Sends the query message to Register Server (by opening a
+                        new TCP connection), and in response it receives a list
+                        of all active peers that includes the hostname and RFC
+                        server port information.
+
+ keepalive              Sends 'keep alive' message to the Register Server to
+                        inform that the peer continues to be active. Upon
+                        receipt of this message, the Register Server resets the
+                        TTL value for this peer to 7200.
+
+ rfcquery               Requests RFC indexes from all remote peers that are
+                        currently active peers in P2P-DI system.
+
+ getrfc number          Requests to download a specific RFC document from a
+                        remote peer. RFC document is specified with 'number'
+                        provided by the user. The 'number' argument is required
+                        field for this command.
+
+ exit                   Terminates the program on the peer. Drops all
+                        connections, closes and removes all ports and sockets.
