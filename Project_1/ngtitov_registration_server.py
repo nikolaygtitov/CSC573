@@ -4,26 +4,44 @@ import datetime
 import time
 from socket import *
 
-
-# The Application Layer Protocol for peer-to-RS communication of P2P-DI/1.0 is
-# defined as follows:
+# The Application Layer Protocol for peer-to-RS REQUEST communication of
+# P2P-DI/1.0 is defined as follows:
 '''
--------------------------------------
- Method | Protocol name and version |
--------------------------------------
- Host:  |           IPv4            |
--------------------------------------
- Port:  |           xxxxx           |
--------------------------------------
-  OS:   |           System          |
--------------------------------------
- Date:  | Yr-Mo-Day Hr-Min-Sec-Msec |
--------------------------------------
- EOP (End of Protocol)              |
--------------------------------------
+--------------------------------------
+ Method  | Protocol name and version |
+--------------------------------------
+ Host:   |           IPv4            |
+--------------------------------------
+ Port:   |          Integer          |
+--------------------------------------
+ Cookie: |          Integer          |
+--------------------------------------
+  OS:    |          System           |
+--------------------------------------
+ Date:   | Yr-Mo-Day Hr-Min-Sec-Msec |
+--------------------------------------
+ EOP (End of Protocol)               |
+--------------------------------------
 '''
-# The Application Layer Protocol for *-to-peer communication of P2P-DI/1.0 is
-# defined as follows:
+# The Application Layer Protocol for peer-to-peer REQUEST communication of
+# P2P-DI/1.0 is defined as follows:
+'''
+----------------------------------------------
+ Method  | Index | Protocol name and version |
+----------------------------------------------
+ Host:   |               IPv4                |
+----------------------------------------------
+ Port:   |              Integer              |
+----------------------------------------------
+  OS:    |              System               |
+----------------------------------------------
+ Date:   | Year-Month-Day Hour-Min-Sec-Msec  |
+----------------------------------------------
+ EOP (End of Protocol)                       |
+----------------------------------------------
+'''
+# The Application Layer Protocol for *-to-peer RESPONSE communication of
+# P2P-DI/1.0 is defined as follows:
 '''
 ---------------------------------------------------
  Protocol name and version | Status Code | Phrase |
@@ -43,9 +61,9 @@ SERVER_PORT = 65423
 TTL = 7200
 THIRTY_DAYS = 2592000
 PROTOCOL = 'P2P-DI/1.0'
-STATUS_CODE_PHRASE = ' {} {}'
-PROTOCOL_COOKIE = 'COOKIE: {}'
-PROTOCOL_ACTIVE_PEER = 'Host: {} Port: {}'
+STATUS_CODE_PHRASE = ' {} {}\n'
+PROTOCOL_COOKIE = 'Cookie: {}\n'
+PROTOCOL_ACTIVE_PEERS = 'Host: {} Port: {}\n'
 PROTOCOL_EOP = 'EOP'
 
 
@@ -62,45 +80,47 @@ def extract_data_protocol():
         exit(_e)
     _host = _data_list[_data_list.index('Host:') + 1]
     _port = _data_list[_data_list.index('Port:') + 1]
-    return _method, _host, _port
+    _cookie = None if _data_list[_data_list.index('Cookie:') + 1] == 'None' \
+        else int(_data_list[_data_list.index('Cookie:') + 1])
+    return _method, _host, _port, _cookie
 
 
 def encapsulate_data_protocol():
-    _header = PROTOCOL + STATUS_CODE_PHRASE.format(status_code, phrase) + '\n'
+    _header = PROTOCOL + STATUS_CODE_PHRASE.format(status_code, phrase)
     _protocol = _header
-    if method in ['REGISTER', 'KEEPALIVE']:
-        if status_code in [200, 201]:
-            _protocol = _protocol + PROTOCOL_COOKIE.format(cookie) +  \
-                        PROTOCOL_EOP
-        else:
-            _protocol = _protocol + PROTOCOL_EOP
-    elif method == 'PQUERY':
-        if status_code == 200:
-            for _host, _port in dict_active_peers.iteritems():
-                _protocol += _protocol + PROTOCOL_ACTIVE_PEER.format(
-                    _host.hostname, _host.port)
-    _protocol = _protocol + PROTOCOL_EOP
-    return _protocol
-
-
-def get_cookie():
-    for _cookie, _peer in dict_peers.iteritems():
-        if _peer.hostname == host:
+    if method in ['REGISTER', 'KEEPALIVE'] and status_code in [200, 201]:
+        if not cookie:
+            _cookie = dict_peers.keys()[-1]
+            _peer = dict_peers.get(_cookie)
             try:
-                assert _cookie == _peer.cookie, \
-                    'Cookie for peer {} does not match!'.format(host)
-                return _cookie
+                assert _peer.hostname == host, 'Exception due to raise ' \
+                                               'condition'
             except AssertionError, _e:
                 print _e
-    return None
+                _cookie = None
+                for _c, _p in dict_peers.iteritems():
+                    if _p.hostname == host:
+                        _cookie = _p.cookie
+                        break
+            _protocol = _protocol + PROTOCOL_COOKIE.format(_cookie)
+        else:
+            _protocol = _protocol + PROTOCOL_COOKIE.format(cookie)
+    elif method == 'PQUERY' and status_code == 302:
+        _active_peers = ''
+        for _host, _port in dict_active_peers.iteritems():
+            _active_peers += PROTOCOL_ACTIVE_PEERS.format(_host, _port)
+        _protocol = _protocol + _active_peers
+    _protocol = _protocol + PROTOCOL_EOP
+    return _protocol
 
 
 def execute_request():
     try:
         if method == 'REGISTER':
             if cookie is None:
-                peer = Peer(host, len(dict_peers), True, port,
-                            datetime.datetime.now())
+                assert len(dict_peers) not in dict_peers, \
+                    'Error: Cookie for the new peer is in use.'
+                peer = Peer(host, port, _cookie=len(dict_peers), _flag=True)
                 dict_peers[len(dict_peers)] = peer
                 return 201, 'Created', None
             else:
@@ -113,7 +133,7 @@ def execute_request():
             return 200, 'OK', None
         elif method == 'PQUERY':
             if cookie is None:
-                return 403, 'Forbidden [Peer is not register with the RS]', None
+                return 403, 'Forbidden [Peer is NOT register with the RS]', None
             else:
                 peer = dict_peers.get(cookie)
                 peer.update()
@@ -122,7 +142,7 @@ def execute_request():
                     if _peer.flag and cookie != _peer.cookie:
                         _dict_active_peers[_peer.hostname] = _peer.port
                 if len(_dict_active_peers) > 0:
-                    return 200, 'OK', _dict_active_peers
+                    return 302, 'Found', _dict_active_peers
                 else:
                     return 404, 'Not Found [No other active peers in the ' \
                                 'P2P-DI system found]', None
@@ -132,12 +152,12 @@ def execute_request():
             return 200, 'OK', None
         else:
             pass
-        return '400 Bad Request', None
+        return 400, 'Bad Request', None
     except Exception as _e:
         print _e.__doc__
-        print type(_e).__name__
-        print _e.message
-        return 404, 'Not Found', None
+        # print type(_e).__name__
+        # print _e.message
+        return 404, 'Not Found [Peer is NOT register with the RS]', None
 
 
 def do_show():
@@ -153,25 +173,24 @@ def do_show():
 
 
 class Peer:
-    def __init__(self, _hostname, _cookie, _flag, _port, _reg_date, _ttl=TTL):
+    def __init__(self, _hostname, _port, _cookie, _flag=False):
         self.hostname = _hostname
+        self.port = _port
         self.cookie = _cookie
         self.flag = _flag
-        self.ttl = _ttl
-        self.port = _port
-        self.reg_date = _reg_date
+        self.reg_date = datetime.datetime.now()
+        self.ttl = TTL
         self.reg_times = [time.time()]
 
     def register_update(self, _port):
         self.update()
         self.port = _port
-        _reg_time = time.time()
-        self.reg_times.append(_reg_time)
+        self.reg_times.append(time.time())
 
     def leave_update(self):
-            self.flag = False
-            self.ttl = 0
-            self.port = None
+        self.port = None
+        self.flag = False
+        self.ttl = 0
 
     def update(self):
         self.flag = True
@@ -220,8 +239,7 @@ while True:
         while PROTOCOL_EOP not in received_data.decode():
             received_data += connection_socket.recv(1024)
     print received_data.decode()
-    method, host, port = extract_data_protocol()
-    cookie = get_cookie()
+    method, host, port, cookie = extract_data_protocol()
     status_code, phrase, dict_active_peers = execute_request()
     response_message = encapsulate_data_protocol()
     connection_socket.send(response_message.encode())

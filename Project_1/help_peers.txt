@@ -1,4 +1,10 @@
 Command:                Usage:
+RS Requests:            Sends specified request to the Register Server. Register
+                        Server IP address and port number for connection
+                        establishment are known in advance. IP address may vary
+                        from server to server. Port number is fixed to value
+                        65423.
+
  register               Sends registration message to the Register Server and
                         provides information about the port to which its RFC
                         server listens.
@@ -10,15 +16,23 @@ Command:                Usage:
                         the program see 'exit'. To join P2P-DI system back, use
                         'register' or 'keepalive' commands.
 
- pquery                 Sends the query message to Register Server (by opening a
-                        new TCP connection), and in response it receives a list
-                        of all active peers that includes the hostname and RFC
-                        server port information.
+ pquery                 Sends the query message to Register Server to obtain the
+                        list of all active peers from which RFCs and their
+                        indexes may be collected. Request is completed with new
+                        TCP connection to the Register Server and it receives a
+                        list of all active peers that includes the hostname and
+                        RFC server port information as a response message from
+                        the Register Server.
 
  keepalive              Sends 'keep alive' message to the Register Server to
                         inform that the peer continues to be active. Upon
                         receipt of this message, the Register Server resets the
                         TTL value for this peer to 7200.
+
+
+Peer Requests:          Sends specified request to another active peer only in
+                        the P2P-DI system. Active peers identified by the
+                        Register Server request, e.g. see 'pquery' command.
 
  rfcquery               Requests RFC indexes from all remote peers that are
                         currently active peers in P2P-DI system.
@@ -27,6 +41,20 @@ Command:                Usage:
                         remote peer. RFC document is specified with 'number'
                         provided by the user. The 'number' argument is required
                         field for this command.
+
+
+Local Requests:         Local commands that this host will execute locally.
+
+ show arg               arg: peer, rfc
+                        Lists requested items defined by 'arg'. The parameter
+                        'arg' may take only 2 (two) possible values - 'peer'
+                        and 'rfc'.
+                        The 'peer' parameter lists all active peers in the
+                        P2P-DI system. The list is obtained from the Register
+                        Server (see 'pquery' command). This list must be
+                        periodically updated to obtain the most recent list. To
+                        obtain the most recent list of active peers see 'pquery'
+                        command.
 
  exit                   Terminates the program on the peer. Drops all
                         connections, closes and removes all ports and sockets.
