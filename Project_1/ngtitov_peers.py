@@ -59,7 +59,7 @@ from random import randint
 
 # Initialization of constants
 RS_REQUESTS = ['REGISTER', 'LEAVE', 'PQUERY', 'KEEPALIVE']
-SERVER_IP = '172.22.176.159' # 'localhost'
+SERVER_IP = 'localhost'
 SERVER_PORT = 65423
 PROTOCOL = 'P2P-DI/1.0'
 PROTOCOL_METHOD = '{} '

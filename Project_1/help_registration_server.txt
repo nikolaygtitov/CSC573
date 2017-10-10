@@ -1,0 +1,14 @@
+Help: This server executes only local commands. No commands will have an effect
+on any of the registered peers.
+
+Command:                Usage:
+Local Requests:         Local commands that this Register Server executes only
+                        locally.
+
+ show                   Lists all registered peers with this Registration Server
+                        in the P2P-DI system. Registered peers are displayed
+                        regardless of their current active status
+                        (active/inactive).
+
+ exit                   Terminates the Register Server. The server drops all
+                        connections, closes and removes all ports and sockets.

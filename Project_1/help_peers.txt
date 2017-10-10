@@ -43,7 +43,7 @@ Peer Requests:          Sends specified request to another active peer only in
                         field for this command.
 
 
-Local Requests:         Local commands that this host will execute locally.
+Local Requests:         Local commands that this host executes only locally.
 
  show arg               arg: peer, rfc
                         Lists requested items defined by 'arg'. The parameter
