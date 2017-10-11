@@ -127,23 +127,23 @@ class PeerRequests(threading.Thread):
                 print 'Shuts down the TCP Register Server welcoming socket...'
                 exit()
             # Read peer's request data from socket
-            received_data = connection_socket.recv(1024)
+            request_data = connection_socket.recv(1024)
             try:
-                assert PROTOCOL_EOP in received_data.decode(), \
+                assert PROTOCOL_EOP in request_data.decode(), \
                     'Did not receive all the data yet.. Wait..'
             except AssertionError, _e:
                 print _e
-                while PROTOCOL_EOP not in received_data.decode():
-                    received_data += connection_socket.recv(1024)
-            print received_data.decode()
-            response_message = extract_data_protocol(received_data.decode())
+                while PROTOCOL_EOP not in request_data.decode():
+                    request_data += connection_socket.recv(1024)
+            print request_data.decode()
+            response_message = extract_data_protocol(request_data.decode())
             connection_socket.send(response_message.encode())
             connection_socket.close()
             del connection_socket
 
 
-def extract_data_protocol(received_data):
-    data_list = received_data.split()
+def extract_data_protocol(request_data):
+    data_list = request_data.split()
     method = data_list[0]
     version = data_list[1]
     try:
@@ -234,7 +234,7 @@ def encapsulate_data_protocol(status_code, phrase, cookie=None,
 
 
 def do_show():
-    if len(dict_peers) > 0:
+    if dict_peers:
         print 'Show: Each Registered Peer Information...'
         for key, peer in dict_peers.iteritems():
             peer.is_active()
@@ -283,7 +283,7 @@ while True:
             server_socket.shutdown(SHUT_RD)
             server_socket.close()
             del server_socket
-            time.sleep(1)
+            peer_requests_thread.join()
             exit('Goodbye')
         elif request == 'HELP':
             try:

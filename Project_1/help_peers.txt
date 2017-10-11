@@ -56,5 +56,13 @@ Local Requests:         Local commands that this host executes only locally.
                         obtain the most recent list of active peers see 'pquery'
                         command.
 
+ update                 Updates the memory of the running process with new (if
+                        any) RFC.txt files that were manually added into
+                        'filespace' of the user. The 'filespace' is existing
+                        directory that contains all the RFC.txt files download
+                        directly from https://www.rfc-editor.org/
+                        This command is NOT required if no files were downloaded
+                        or moved to the 'filesystem' manually.
+
  exit                   Terminates the program on the peer. Drops all
                         connections, closes and removes all ports and sockets.

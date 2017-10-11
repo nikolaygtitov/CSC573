@@ -2,6 +2,9 @@
 # Import Python's libraries
 import platform
 import datetime
+import threading
+import re
+import os
 from socket import *
 from random import randint
 
@@ -59,6 +62,7 @@ from random import randint
 
 # Initialization of constants
 RS_REQUESTS = ['REGISTER', 'LEAVE', 'PQUERY', 'KEEPALIVE']
+# Register Server IP needs to be updated accordingly
 SERVER_IP = 'localhost'
 SERVER_PORT = 65423
 PROTOCOL = 'P2P-DI/1.0'
@@ -74,52 +78,19 @@ PROTOCOL_COOKIE = 'Cookie: {}\n'
 PROTOCOL_OS = 'OS: {}\n'
 PROTOCOL_DATE = 'Date: {}\n'
 PROTOCOL_EOP = 'EOP'
+TTL = 7200
+HELP = 'Command not found. Use \'help\' to see proper commands.\n'
 # Generate a random port number to which RFC server of this peer is listening
 # Ports must be in the range [65400-65500] since VCL/EOS blocks all other ports
 RFC_PORT = randint(65400, 65500)
 
 
-def extract_rs_response_data_protocol(response):
-    _response_list = response.split()
-    _version = _response_list[0]
-    try:
-        assert _version == PROTOCOL, 'Undefined App Layer Protocol.. Exit'
-    except AssertionError, _e:
-        print _e
-        return None
-    _status_code = int(_response_list[1])
-    if _status_code in [200, 201]:
-        if not register_server.cookie:
-            register_server.cookie = _response_list[_response_list.index(
-                'Cookie:') + 1]
-    elif _status_code == 302:
-        _hosts = [_response_list[i + 1] for i in range(len(_response_list)) if
-                  _response_list[i] == 'Host:']
-        _ports = [_response_list[i + 1] for i in range(len(_response_list)) if
-                  _response_list[i] == 'Port:']
-        try:
-            assert len(_hosts) == len(_ports), \
-                'Number of active hosts IP addresses: \'{}\' does not match ' \
-                'the corresponding number of their ports: \'{}\' return from ' \
-                'the Register Server \'{}\''.format(len(_hosts), len(_ports),
-                                                    SERVER_IP)
-        except AssertionError, _e:
-            print _e
-            return None
-        _dict_active_peers = dict(zip(_hosts, _ports))
-        return _dict_active_peers
-    return None
-
-
-def encapsulate_rs_request_data_protocol():
-    _header = RS_PROTOCOL_HEADER.format(request)
-    _host = PROTOCOL_RFC_HOST_SERVER.format(rfc_host_server)
-    _port = PROTOCOL_RFC_PORT_SERVER.format(rfc_port_server)
-    _cookie = PROTOCOL_COOKIE.format(register_server.cookie)
-    _os = PROTOCOL_OS.format(platform.platform())
-    _date = PROTOCOL_DATE.format(datetime.datetime.now())
-    _protocol = _header + _host + _port + _cookie + _os + _date + PROTOCOL_EOP
-    return _protocol
+file_space = raw_input('> Please specify YOUR own file space: ')
+while not os.path.isdir(file_space):
+    if file_space.upper() == 'EXIT':
+        exit()
+    print file_space + ': No such file or directory'
+    file_space = raw_input('> Please specify YOUR own file space: ')
 
 # Create a TCP server welcoming socket and bind it to a well-known port
 rfc_socket = socket(AF_INET, SOCK_STREAM)
@@ -133,7 +104,6 @@ except error, (value, message):
     rfc_socket.close()
     del rfc_socket
     exit(message)
-
 # Determine IP address and port number associated with the RFC server welcoming
 # pocket
 rfc_host_server = getaddrinfo(
@@ -145,6 +115,74 @@ try:
     assert rfc_port_server == RFC_PORT, 'RFC server port does not match'
 except AssertionError, e:
     exit(e)
+
+
+class RfcServer(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
+        # Loop forever waiting for new connections from different peers
+        while True:
+            # Wait on accept and create new socket
+            try:
+                connection_socket, address = rfc_socket.accept()
+            except error:
+                print 'Shuts down the RFC server welcoming socket...'
+                exit()
+            # Read peer's request data from socket
+            request_data = connection_socket.recv(1024)
+            try:
+                assert PROTOCOL_EOP in request_data.decode(), \
+                    'Did not receive all the data yet.. Wait..'
+            except AssertionError, _e:
+                print _e
+                while PROTOCOL_EOP not in request_data.decode():
+                    request_data += connection_socket.recv(1024)
+            print request_data.decode()
+            # response_message = extract_data_protocol(received_data.decode())
+            # connection_socket.send(response_message.encode())
+            # connection_socket.close()
+            # del connection_socket
+
+
+class RfcIndex:
+    def __init__(self, index, title, hostname=rfc_host_server, ttl=TTL):
+        self.index = index
+        self.title = title
+        self.hostname = hostname
+        self.ttl = ttl
+
+
+def update():
+    rfcs = os.listdir(file_space)
+    if rfcs:
+        for rfc in rfcs:
+            index = int(re.search(r'\d+', rfc).group())
+            if index not in local_rfcs:
+                with open(file_space + '/' + rfc, 'r') as rfc_file:
+                    lines = rfc_file.read().splitlines()
+                    title = ''
+                    for i in range(len(lines)):
+                        if lines[i] == 'Abstract':
+                            title_split = 2
+                            while lines[i - title_split]:
+                                title = lines[i - title_split].lstrip() + title
+                                title_split += 1
+                    rfc_index = RfcIndex(index, title)
+                    local_rfcs[index] = rfc_index
+
+
+def do_show_rfc():
+    if local_rfcs:
+        print 'RFCs stored in the directory: \'{}\''.format(file_space)
+        for index, rfc_index in local_rfcs.iteritems():
+            print 'Index: {} '.format(rfc_index.index), \
+                'Title: \'{}\' '.format(rfc_index.title), \
+                'Hostname: {} '.format(rfc_index.hostname), \
+                'TTL: {}'.format(rfc_index.ttl)
+    else:
+        print 'No RFCs are found in the directory \'{}\''.format(file_space)
 
 
 class RegisterServer:
@@ -169,7 +207,7 @@ class RegisterServer:
             while PROTOCOL_EOP not in rs_response_message.decode():
                 rs_response_message += client_socket.recv(1024)
         except (error, herror, gaierror, timeout), (_value, _message):
-            print 'Exception in creating TCP socket and connecting to ' \
+            print 'Exception: Creating TCP socket and connecting to ' \
                   'Register Server: {}'.format(SERVER_IP)
             print _message
             client_socket.close()
@@ -182,15 +220,69 @@ class RegisterServer:
         del client_socket
         return
 
-    def do_show_peer(self):
-        if self.dict_active_peers is None:
-            print 'Not Found [No other active peers in the P2P-DI system found]'
-            print 'Please update list of active peers with \'pquery\' commnand'
-        else:
-            for _host, _port in self.dict_active_peers.iteritems():
-                print 'Host: {}, Port: {}'.format(_host, _port)
 
+def extract_rs_response_data_protocol(response):
+    response_list = response.split()
+    version = response_list[0]
+    try:
+        assert version == PROTOCOL, 'Exception: Undefined App Layer Protocol...'
+    except AssertionError, _e:
+        print _e
+        return None
+    status_code = int(response_list[1])
+    if status_code in [200, 201]:
+        if not register_server.cookie:
+            register_server.cookie = response_list[response_list.index(
+                'Cookie:') + 1]
+    elif status_code == 302:
+        hosts = [response_list[i + 1] for i in range(len(response_list)) if
+                 response_list[i] == 'Host:']
+        ports = [response_list[i + 1] for i in range(len(response_list)) if
+                 response_list[i] == 'Port:']
+        try:
+            assert len(hosts) == len(ports), \
+                'Number of active hosts IP addresses: \'{}\' does not match ' \
+                'the corresponding number of their ports: \'{}\' return from ' \
+                'the Register Server \'{}\''.format(len(hosts), len(ports),
+                                                    SERVER_IP)
+        except AssertionError, _e:
+            print _e
+            return None
+        dict_active_peers = dict(zip(hosts, ports))
+        return dict_active_peers
+    return None
+
+
+def encapsulate_rs_request_data_protocol():
+    header = RS_PROTOCOL_HEADER.format(request)
+    host = PROTOCOL_RFC_HOST_SERVER.format(rfc_host_server)
+    port = PROTOCOL_RFC_PORT_SERVER.format(rfc_port_server)
+    cookie = PROTOCOL_COOKIE.format(register_server.cookie)
+    _os_ = PROTOCOL_OS.format(platform.platform())
+    date = PROTOCOL_DATE.format(datetime.datetime.now())
+    protocol = header + host + port + cookie + _os_ + date + PROTOCOL_EOP
+    return protocol
+
+
+def do_show_peer():
+    if register_server.dict_active_peers is None:
+        print 'Not Found [No other active peers in the P2P-DI system found]'
+        print 'Please update list of active peers with \'pquery\' commnand'
+    else:
+        for host, port in register_server.dict_active_peers.iteritems():
+            print 'Host: {}, Port: {}'.format(host, port)
+
+
+# Create and start new thread that takes care of RFC local server. All other
+# peer's requests coming to welcoming port of this RFC server.
+rfc_server_thread = RfcServer()
+rfc_server_thread.start()
+
+local_rfcs = {}
 register_server = RegisterServer()
+update()
+
+
 while True:
     command = raw_input('> ').upper()
     command_fields = command.split(' ')
@@ -203,7 +295,7 @@ while True:
         elif request == 'SHOW':
             print 'usage: show arg: peer, rfc'
         elif request == 'UPDATE':
-            pass
+            update()
         elif request == 'HELP':
             try:
                 with open('help_peers.txt', 'r') as fin:
@@ -213,24 +305,27 @@ while True:
                 print type(e).__name__
                 print e.message
         elif request == 'EXIT':
+            print 'Stopping RFC Server...'
+            rfc_socket.shutdown(SHUT_RD)
             rfc_socket.close()
             del rfc_socket
+            rfc_server_thread.join()
             exit('Goodbye')
         elif request == '':
             pass
         else:
-            print 'Command not found. Use \'help\' to see proper commands.\n'
+            print HELP
     elif len(command_fields) == 2:
         if request == 'GETRFC':
             pass
         elif request == 'SHOW':
             if command_fields[1] == 'PEER':
-                register_server.do_show_peer()
+                do_show_peer()
             elif command_fields[1] == 'RFC':
-                pass
+                do_show_rfc()
             else:
-                'Command not found. Use \'help\' to see proper commands.\n'
+                print 'usage: show arg: peer, rfc'
         else:
-            'Command not found. Use \'help\' to see proper commands.\n'
+            print HELP
     else:
-        print 'Command not found. Use \'help\' to see proper commands.\n'
+        print HELP
