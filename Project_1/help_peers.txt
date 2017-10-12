@@ -35,7 +35,7 @@ Peer Requests:          Sends specified request to another active peer only in
                         Register Server request, e.g. see 'pquery' command.
 
  rfcquery               Requests RFC indexes from all remote peers that are
-                        currently active peers in P2P-DI system.
+                        currently active peers in the P2P-DI system.
 
  getrfc number          Requests to download a specific RFC document from a
                         remote peer. RFC document is specified with 'number'
@@ -45,9 +45,10 @@ Peer Requests:          Sends specified request to another active peer only in
 
 Local Requests:         Local commands that this host executes only locally.
 
- show arg               arg: peer, rfc
-                        Lists requested items defined by 'arg'. The parameter
-                        'arg' may take only 2 (two) possible values - 'peer'
+ show arg1 arg2         arg1: peer, rfc
+ show rfc arg2          arg2: local, remote
+                        Lists requested items defined by 'arg1'. The parameter
+                        'arg1' may take only 2 (two) possible values - 'peer'
                         and 'rfc'.
                         The 'peer' parameter lists all active peers in the
                         P2P-DI system. The list is obtained from the Register
@@ -55,6 +56,18 @@ Local Requests:         Local commands that this host executes only locally.
                         periodically updated to obtain the most recent list. To
                         obtain the most recent list of active peers see 'pquery'
                         command.
+                        The 'rfc' parameter lists all RFC indexes including
+                        local, (e.g. reside locally in file space that was
+                        specified by the user) and remote (e.g. obtained
+                        remotely from active peers in the P2P-DI system, see
+                        command 'rfcquery'). The second argument 'arg2' only
+                        corresponds to 'show rfc' command. 'arg2' may take only
+                        2 (two) possible values - 'local' and 'remote'. The
+                        'local' parameter lists only local RFC indexes (stored
+                        in the file space of the user) and 'remote' lists only
+                        RFC indexes that were obtained remotely (see 'pquery').
+
+
 
  update                 Updates the memory of the running process with new (if
                         any) RFC.txt files that were manually added into

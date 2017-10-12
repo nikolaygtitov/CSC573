@@ -8,53 +8,79 @@ from socket import *
 # The Application Layer Protocol for peer-to-RS REQUEST communication of
 # P2P-DI/1.0 is defined as follows:
 '''
---------------------------------------
- Method  | Protocol name and version |
---------------------------------------
- Host:   |           IPv4            |
---------------------------------------
- Port:   |          Integer          |
---------------------------------------
- Cookie: |          Integer          |
---------------------------------------
-  OS:    |          System           |
---------------------------------------
- Date:   | Yr-Mo-Day Hr-Min-Sec-Msec |
---------------------------------------
- EOP (End of Protocol)               |
---------------------------------------
+-------------------------------------------------
+| Type    | Method | Protocol name and version  |
+-------------------------------------------------
+| Host:   |  IPv4  | Port: |      Integer       |
+-------------------------------------------------
+| Cookie: |               Integer               |
+-------------------------------------------------
+|  OS:    |               System                |
+-------------------------------------------------
+| Date:   |  Year-Month-Day Hour-Min-Sec-Msec   |
+-------------------------------------------------
+|            EOP (End of Protocol)              |
+-------------------------------------------------
 '''
 # The Application Layer Protocol for peer-to-peer REQUEST communication of
 # P2P-DI/1.0 is defined as follows:
 '''
-----------------------------------------------
- Method  | Index | Protocol name and version |
-----------------------------------------------
- Host:   |               IPv4                |
-----------------------------------------------
- Port:   |              Integer              |
-----------------------------------------------
-  OS:    |              System               |
-----------------------------------------------
- Date:   | Year-Month-Day Hour-Min-Sec-Msec  |
-----------------------------------------------
- EOP (End of Protocol)                       |
-----------------------------------------------
+-----------------------------------------------------------------
+| Type  | Method | Index (optional) | Protocol name and version |
+-----------------------------------------------------------------
+| Host: |  IPv4  |       Port:      |          Integer          |
+-----------------------------------------------------------------
+|  OS:  |                       System                          |
+-----------------------------------------------------------------
+| Date: |         Year-Month-Day Hour-Min-Sec-Msec              |
+-----------------------------------------------------------------
+|                  EOP (End of Protocol)                        |
+-----------------------------------------------------------------
 '''
-# The Application Layer Protocol for *-to-peer RESPONSE communication of
+# The Application Layer Protocol for RS-to-peer RESPONSE communication of
 # P2P-DI/1.0 is defined as follows:
 '''
----------------------------------------------------
- Protocol name and version | Status Code | Phrase |
----------------------------------------------------
- Header Field name:        |       Value          |
----------------------------------------------------
- Header Field name:        |       Value          |
----------------------------------------------------
-           ...             |        ...           |
----------------------------------------------------
- EOP (End of Protocol)                            |
----------------------------------------------------
+-----------------------------------------------------
+| Protocol name and version | Status Code | Phrase  |
+-----------------------------------------------------
+|    Cookie: (optional)     |        Integer        |
+-----------------------------------------------------
+|   Host:   |      IPv4     |    Port:    | Integer |
+-----------------------------------------------------
+|   Host:   |      IPv4     |    Port:    | Integer |
+-----------------------------------------------------
+|    ...    |       ...     |     ...     |   ...   |
+-----------------------------------------------------
+|                EOP (End of Protocol)              |
+-----------------------------------------------------
+'''
+# The Application Layer Protocol for peer-to-peer in RESPONSE communication of
+# RFCQuery request of P2P-DI/1.0 is defined as follows:
+'''
+-----------------------------------------------------
+| Protocol name and version | Status Code | Phrase  |
+-----------------------------------------------------
+| Index: | Integer | Title: | String | Host: | IPv4 |
+-----------------------------------------------------
+| Index: | Integer | Title: | String | Host: | IPv4 |
+-----------------------------------------------------
+|  ...   |   ...   |  ...   |  ...   |  ...  |  ... |
+-----------------------------------------------------
+|                EOP (End of Protocol)              |
+-----------------------------------------------------
+'''
+# The Application Layer Protocol for peer-to-peer in RESPONSE communication of
+# GetRFC request of P2P-DI/1.0 is defined as follows:
+'''
+-----------------------------------------------------
+| Protocol name and version | Status Code | Phrase  |
+-----------------------------------------------------
+|                                                   |
+|                      RFC.txt                      |
+|                                                   |
+-----------------------------------------------------
+|                EOP (End of Protocol)              |
+-----------------------------------------------------
 '''
 
 # Initialization of constants
@@ -66,6 +92,7 @@ STATUS_CODE_PHRASE = ' {} {}\n'
 PROTOCOL_COOKIE = 'Cookie: {}\n'
 PROTOCOL_ACTIVE_PEERS = 'Host: {} Port: {}\n'
 PROTOCOL_EOP = 'EOP'
+MAX_BUFFER_SIZE = 1024
 
 
 # Dictionary of peers.
@@ -127,27 +154,27 @@ class PeerRequests(threading.Thread):
                 print 'Shuts down the TCP Register Server welcoming socket...'
                 exit()
             # Read peer's request data from socket
-            request_data = connection_socket.recv(1024)
+            request_data = connection_socket.recv(MAX_BUFFER_SIZE)
+            while len(request_data) == MAX_BUFFER_SIZE:
+                request_data += connection_socket.recv(MAX_BUFFER_SIZE)
+            print request_data.decode()
             try:
                 assert PROTOCOL_EOP in request_data.decode(), \
-                    'Did not receive all the data yet.. Wait..'
+                    'Exception: Undefined App Layer Protocol..'
+                response_message = extract_data_protocol(request_data.decode())
+                connection_socket.send(response_message.encode())
             except AssertionError, _e:
                 print _e
-                while PROTOCOL_EOP not in request_data.decode():
-                    request_data += connection_socket.recv(1024)
-            print request_data.decode()
-            response_message = extract_data_protocol(request_data.decode())
-            connection_socket.send(response_message.encode())
             connection_socket.close()
             del connection_socket
 
 
 def extract_data_protocol(request_data):
     data_list = request_data.split()
-    method = data_list[0]
-    version = data_list[1]
+    method = data_list[1]
+    version = data_list[2]
     try:
-        assert version == PROTOCOL, 'Exception: Undefined App Layer Protocol..'
+        assert version == PROTOCOL, 'Exception: Undefined App Layer Protocol...'
     except AssertionError, _e:
         print _e
         response_message = encapsulate_data_protocol(417,
@@ -198,8 +225,7 @@ def execute_request(method, host, port, cookie):
                         dict_active_peers=dict_active_peers)
                 else:
                     response_message = encapsulate_data_protocol(
-                        404,
-                        'Not Found [No other active peers in the P2P-DI '
+                        404, 'Not Found [No other active peers in the P2P-DI '
                         'system found]')
         elif method == 'KEEPALIVE':
             peer = dict_peers.get(cookie)
@@ -223,13 +249,13 @@ def encapsulate_data_protocol(status_code, phrase, cookie=None,
     header = PROTOCOL + STATUS_CODE_PHRASE.format(status_code, phrase)
     protocol = header
     if status_code in [200, 201] and cookie is not None:
-        protocol = protocol + PROTOCOL_COOKIE.format(cookie)
+        protocol += PROTOCOL_COOKIE.format(cookie)
     elif status_code == 302:
         active_peers = ''
         for host, port in dict_active_peers.iteritems():
             active_peers += PROTOCOL_ACTIVE_PEERS.format(host, port)
-        protocol = protocol + active_peers
-    protocol = protocol + PROTOCOL_EOP
+        protocol += active_peers
+    protocol += PROTOCOL_EOP
     return protocol
 
 
@@ -242,7 +268,7 @@ def do_show():
                 'Port: {} (RFC Server) '.format(peer.port), \
                 'Cookie: {} '.format(peer.cookie), \
                 'Flag: {} '.format(peer.flag), \
-                'TTL: {} '.format(peer.ttl), \
+                'TTL: {} '.format(int(peer.ttl)), \
                 'Most Recent Registration Date: {} '.format(peer.reg_date), \
                 'Times host been registered for last 30 days: {} '.format(
                     len(peer.reg_times))
