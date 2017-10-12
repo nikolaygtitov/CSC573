@@ -98,7 +98,7 @@ GET_RFC_QUERY_HEADER = 'GET RFC-INDEX P2P-DI/1.0\n'
 GET_RFC_HEADER = 'GET RFC {} P2P-DI/1.0\n'
 PEER_RESPONSE_HEADER = 'P2P-DI/1.0 {} {}\n'
 PROTOCOL_HOST_PORT = 'Host: {} Port: {}\n'
-PROTOCOL_RFC_INDEX = 'Index: {} Title: {} Host: {}\n'
+PROTOCOL_RFC_INDEX = 'Index: {} Title: <start> {} <end> Host: {}\n'
 PROTOCOL_COOKIE = 'Cookie: {}\n'
 PROTOCOL_OS = 'OS: {}\n'
 PROTOCOL_DATE = 'Date: {}\n'
@@ -214,7 +214,7 @@ def extract_rfc_server_data_protocol(request_data):
             header = PEER_RESPONSE_HEADER.format(200, 'OK')
             protocol = header
             for i, rfc in local_rfcs.iteritems():
-                protocol += PROTOCOL_RFC_INDEX.format(rfc.index, rfc.title,
+                protocol += PROTOCOL_RFC_INDEX.format(rfc.index,  rfc.title,
                                                       rfc.hostname)
         else:
             header = PEER_RESPONSE_HEADER.format(
@@ -417,10 +417,20 @@ def extract_peer_response_data_protocol(response, host):
         return
     status_code = int(response_list[1])
     if request == 'RFCQUERY' and status_code == 200:
+        titles = []
+        for i in range(len(response_list)):
+            if i < len(response_list):
+                if response_list[i] == 'Title:' and response_list[
+                            i + 1] == '<start>':
+                    title = ''
+                    i += 2
+                    while response_list[i] != '<end>':
+                        title += response_list[i] + ' '
+                        del response_list[i]
+                    title = title.strip()
+                    titles.append(title)
         indexes = [response_list[i + 1] for i in range(len(response_list)) if
                    response_list[i] == 'Index:']
-        titles = [response_list[i + 1] for i in range(len(response_list)) if
-                  response_list[i] == 'Title:']
         hosts = [response_list[i + 1] for i in range(len(response_list)) if
                  response_list[i] == 'Host:']
         try:
