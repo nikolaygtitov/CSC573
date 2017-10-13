@@ -57,17 +57,17 @@ from socket import *
 # The Application Layer Protocol for peer-to-peer in RESPONSE communication of
 # RFCQuery request of P2P-DI/1.0 is defined as follows:
 '''
------------------------------------------------------
-| Protocol name and version | Status Code | Phrase  |
------------------------------------------------------
-| Index: | Integer | Title: | String | Host: | IPv4 |
------------------------------------------------------
-| Index: | Integer | Title: | String | Host: | IPv4 |
------------------------------------------------------
-|  ...   |   ...   |  ...   |  ...   |  ...  |  ... |
------------------------------------------------------
-|                EOP (End of Protocol)              |
------------------------------------------------------
+-----------------------------------------------------------------------
+| Protocol name and version |        Status Code       |    Phrase    |
+-----------------------------------------------------------------------
+| Index: | Integer | Title: | String | Size: | Integer | Host: | IPv4 |
+-----------------------------------------------------------------------
+| Index: | Integer | Title: | String | Size: | Integer | Host: | IPv4 |
+-----------------------------------------------------------------------
+|  ...   |   ...   |  ...   |  ...   |  ...  |   ...   |  ...  | ...  |
+-----------------------------------------------------------------------
+|                        EOP (End of Protocol)                        |
+-----------------------------------------------------------------------
 '''
 # The Application Layer Protocol for peer-to-peer in RESPONSE communication of
 # GetRFC request of P2P-DI/1.0 is defined as follows:
@@ -75,8 +75,10 @@ from socket import *
 -----------------------------------------------------
 | Protocol name and version | Status Code | Phrase  |
 -----------------------------------------------------
+|           Size:           |        Integer        |
+-----------------------------------------------------
 |                                                   |
-|                      RFC.txt                      |
+|                        RFC                        |
 |                                                   |
 -----------------------------------------------------
 |                EOP (End of Protocol)              |
@@ -157,7 +159,7 @@ class PeerRequests(threading.Thread):
             request_data = connection_socket.recv(MAX_BUFFER_SIZE)
             while len(request_data) == MAX_BUFFER_SIZE:
                 request_data += connection_socket.recv(MAX_BUFFER_SIZE)
-            print request_data.decode()
+            print '\n', request_data.decode()
             try:
                 assert PROTOCOL_EOP in request_data.decode(), \
                     'Exception: Undefined App Layer Protocol..'
@@ -306,7 +308,7 @@ while True:
             do_show()
         elif request == 'EXIT':
             print 'Stopping Register Server...'
-            server_socket.shutdown(SHUT_RD)
+            server_socket.shutdown(SHUT_RDWR)
             server_socket.close()
             del server_socket
             peer_requests_thread.join()
@@ -316,9 +318,9 @@ while True:
                 with open('help_registration_server.txt', 'r') as fin:
                     print fin.read()
             except Exception as e:
-                print e.__doc__
-                print type(e).__name__
-                print e.message
+                print e.__doc__, type(e).__name__, e.message
+                print 'File \'help_registration_server.txt\' not found. ' \
+                      'Please import file in local directory!'
         elif request == '':
             pass
         else:
