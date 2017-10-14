@@ -1,5 +1,38 @@
-# ngtitov_peers.py
-# Import Python's libraries
+"""
+ngtitov_peers.py
+
+CSC 573 (601) - Internet Protocols
+This program implements the solution the Project 1 assignment: Peer-to-Peer
+with Distributed Index (P2P-DI) System for Downloading RFCs.
+
+This is Peer implementation that can communicate with Register Server and
+other peers in the P2P-DI system. Each peer implements  3 (three) major
+functionality:
+- Each peer maintains an RFC index with information about RFCs it has
+locally, as well  as RFCs maintained remotely by other peers it has recently
+contacted.
+- It also implements an RFC server that other peers may contact to download
+desired RFCs.
+- It also implements an RFC client that is used for connecting to the
+Register Server and the RFC Server of remote peers.
+
+The Application Layer Protocol of the P2P-DI system is designed for peers to
+communicate with the Register Server and among themselves. Protocol details
+are provided below.
+
+@version: 1.0
+@todo: None
+@since: October 02, 2017
+
+@status: Complete
+@requires: help_peers.txt file
+
+@contact: ngtitov@ncsu.edu
+@author: Nikolay G. Titov
+"""
+
+
+# Import required Python libraries
 import platform
 import datetime
 import threading
@@ -11,7 +44,7 @@ from random import randint
 
 # The Application Layer Protocol for peer-to-RS REQUEST communication of
 # P2P-DI/1.0 is defined as follows:
-'''
+"""
 -------------------------------------------------
 | Type    | Method | Protocol name and version  |
 -------------------------------------------------
@@ -25,10 +58,11 @@ from random import randint
 -------------------------------------------------
 |            EOP (End of Protocol)              |
 -------------------------------------------------
-'''
+"""
+
 # The Application Layer Protocol for peer-to-peer REQUEST communication of
 # P2P-DI/1.0 is defined as follows:
-'''
+"""
 -----------------------------------------------------------------
 | Type  | Method | Index (optional) | Protocol name and version |
 -----------------------------------------------------------------
@@ -40,10 +74,11 @@ from random import randint
 -----------------------------------------------------------------
 |                  EOP (End of Protocol)                        |
 -----------------------------------------------------------------
-'''
+"""
+
 # The Application Layer Protocol for RS-to-peer RESPONSE communication of
 # P2P-DI/1.0 is defined as follows:
-'''
+"""
 -----------------------------------------------------
 | Protocol name and version | Status Code | Phrase  |
 -----------------------------------------------------
@@ -57,10 +92,11 @@ from random import randint
 -----------------------------------------------------
 |                EOP (End of Protocol)              |
 -----------------------------------------------------
-'''
+"""
+
 # The Application Layer Protocol for peer-to-peer in RESPONSE communication of
 # RFCQuery request of P2P-DI/1.0 is defined as follows:
-'''
+"""
 -----------------------------------------------------------------------
 | Protocol name and version |        Status Code       |    Phrase    |
 -----------------------------------------------------------------------
@@ -72,27 +108,33 @@ from random import randint
 -----------------------------------------------------------------------
 |                        EOP (End of Protocol)                        |
 -----------------------------------------------------------------------
-'''
+"""
+
 # The Application Layer Protocol for peer-to-peer in RESPONSE communication of
-# GetRFC request of P2P-DI/1.0 is defined as follows:
-'''
+# Get RFC request of the P2P-DI/1.0 is defined as follows. Note that header
+# protocol comes as plane text, but the requested RFC in the binary mode:
+"""
 -----------------------------------------------------
 | Protocol name and version | Status Code | Phrase  |
 -----------------------------------------------------
 |           Size:           |        Integer        |
 -----------------------------------------------------
-|                                                   |
-|                        RFC                        |
-|                                                   |
------------------------------------------------------
 |                EOP (End of Protocol)              |
 -----------------------------------------------------
-'''
+              Wait for Accepting message
+-----------------------------------------------------
+|                                                   |
+|                        RFC                        |
+|                   (Binary Mode)                   |
+|                                                   |
+-----------------------------------------------------
+"""
 
 # Initialization of constants
+# Note: Register Server IP needs to be updated accordingly by default it is
+# localhost
 SERVER_IP = '127.0.0.1'
 RS_REQUESTS = ['REGISTER', 'LEAVE', 'PQUERY', 'KEEPALIVE']
-# Register Server IP needs to be updated accordingly
 SERVER_PORT = 65423
 PROTOCOL = 'P2P-DI/1.0'
 RS_PROTOCOL_HEADER = '{} {} P2P-DI/1.0\n'
@@ -108,14 +150,15 @@ PROTOCOL_EOP = 'EOP'
 RFC_FILE = '{}/rfc{}.txt'
 TTL = 7200
 MAX_BUFFER_SIZE = 1024
-HELP = 'Command not found. Use \'help\' to see proper commands.\n'
 # Generate a random port number to which RFC server of this peer is listening
-# Ports must be in the range [65400-65500] since VCL/EOS blocks all other ports
+# Ports must be in the range [65400-65500] since NC State University VCL/EOS
+# blocks all other ports
 RFC_PORT = randint(65400, 65500)
 
 
-file_space = raw_input('> Please specify YOUR own file space (relative '
-                       'directory): ')
+# The program execution starts here. It prompts the user to specify his/her
+# file space where all RFCs file will be kept and downloaded to.
+file_space = raw_input('> Please specify YOUR own file space (directory): ')
 while not os.path.isdir(file_space):
     if file_space.upper() == 'EXIT':
         exit()
@@ -289,8 +332,7 @@ def do_show_rfc_remote():
         print 'Remote RFCs found by requesting RFCQuery from active peers:'
         for rfc in remote_rfcs:
             diff_time = time.time() - rfc.reg_time
-            rfc.ttl = 0 if rfc.ttl - int(diff_time) < 0 else rfc.ttl - int(
-                diff_time)
+            rfc.ttl = 0 if TTL - int(diff_time) < 0 else TTL - int(diff_time)
             print 'Index: {} '.format(rfc.index), \
                 'Title: \'{}\' '.format(rfc.title), \
                 'Size: {} '.format(rfc.file_size), \
@@ -495,7 +537,7 @@ def send_peer_rfc_request():
     for rfc in remote_rfcs:
         if int(rfc.index) == user_index:
             diff_time = time.time() - rfc.reg_time
-            if rfc.ttl - int(diff_time) < 0:
+            if TTL - int(diff_time) < 0:
                 rfc.ttl = 0
                 print 'RFC server: \'{}\' has expired TTL=0 for ' \
                       'RFC \'{}\'...'.format(rfc.hostname, user_index)
@@ -549,17 +591,22 @@ def do_show_peer():
             print 'Host: {}, Port: {}'.format(host, port)
 
 
-# Create and start new thread that takes care of RFC local server. All other
-# peer's requests coming to welcoming port of this RFC server.
+# Create and start new main thread that deals with the RFC server.
+# All requests from other peers will be coming coming to welcoming port of this
+# RFC server.
 rfc_server_thread = RfcServer()
 rfc_server_thread.start()
 
+# Define key variables
 local_rfcs = {}
 remote_rfcs = []
 register_server = RegisterServer()
 update()
 
-
+"""
+This is the main thread that continuously prompts the user for new command. 
+It will loop forever until user sends exit command.
+"""
 while True:
     command = raw_input('> ').upper()
     command_fields = command.split(' ')
@@ -590,7 +637,7 @@ while True:
         elif len(command_fields) == 2:
             if command_fields[1] == 'RFC':
                 do_show_rfc_local()
-                print '*' * 80
+                print '*-' * 40
                 do_show_rfc_remote()
             elif command_fields[1] == 'PEER':
                 do_show_peer()
@@ -618,4 +665,4 @@ while True:
     elif request == '':
             pass
     else:
-        print HELP
+        print 'Command not found. Use \'help\' to see proper commands.\n'

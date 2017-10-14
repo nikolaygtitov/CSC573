@@ -135,8 +135,8 @@ class Peer:
 
     def is_active(self):
         if self.flag:
-            _time = time.time() - self.reg_times[-1]
-            self.ttl = TTL - _time
+            diff_time = time.time() - self.reg_times[-1]
+            self.ttl = TTL - diff_time
             self.flag = True if self.ttl > 0 else False
             if not self.flag:
                 self.ttl = 0
