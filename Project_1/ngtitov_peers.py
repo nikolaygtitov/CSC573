@@ -208,11 +208,13 @@ class RfcServer(threading.Thread):
 
 
 class RfcIndex:
-    def __init__(self, index, title, file_size, hostname=rfc_host_server):
+    def __init__(self, index, title, file_size, hostname=rfc_host_server,
+                 port=RFC_PORT):
         self.index = index
         self.title = title
         self.file_size = file_size
         self.hostname = hostname
+        self.port = port
         self.ttl = TTL
         self.reg_time = time.time()
 
@@ -313,9 +315,9 @@ def do_show_rfc_local():
 
 
 class RegisterServer:
-    def __init__(self, cookie=None, dict_active_peers=None):
-        self.cookie = cookie
-        self.dict_active_peers = dict_active_peers
+    def __init__(self):
+        self.cookie = None
+        self.dict_active_peers = None
 
 
 # Create TCP client socket for Register Server on well-known port and initiate
@@ -372,7 +374,7 @@ def extract_rs_response_data_protocol(response):
         except AssertionError, _e:
             print _e
             return None
-        dict_active_peers = dict(zip(hosts, ports))
+        dict_active_peers = dict(zip(ports, hosts))
         return dict_active_peers
     return None
 
@@ -396,7 +398,7 @@ def send_peer_rfc_query_request():
     if not register_server.dict_active_peers:
         print 'No active peers found... RFC query is not sent...'
         return
-    for host, port in register_server.dict_active_peers.iteritems():
+    for port, host in register_server.dict_active_peers.iteritems():
         client_socket = socket(AF_INET, SOCK_STREAM)
         try:
             client_socket.connect((host, int(port)))
@@ -410,7 +412,8 @@ def send_peer_rfc_query_request():
             print peer_response_message.decode()
             assert PROTOCOL_EOP in peer_response_message, \
                 'Exception: Undefined App Layer Protocol...'
-            extract_peer_response_data_protocol(peer_response_message, host)
+            extract_peer_response_data_protocol(peer_response_message, host,
+                                                port)
         except AssertionError, _e:
             print _e
         except (error, herror, gaierror, timeout), (_value, _message):
@@ -433,7 +436,7 @@ def encapsulate_peer_request_data_protocol(port, index=None):
     return protocol
 
 
-def extract_peer_response_data_protocol(response, host):
+def extract_peer_response_data_protocol(response, host, port):
     response_list = response.split()
     version = response_list[0]
     try:
@@ -462,20 +465,25 @@ def extract_peer_response_data_protocol(response, host):
         hosts = [response_list[i + 1] for i in range(len(response_list)) if
                  response_list[i] == 'Host:']
         try:
-            assert_err = 'Number of RFC indexes: \'{}\' does not  match the  ' \
-                         'corresponding number of either their ' \
+            assert_err = 'Exception: Number of RFC indexes: \'{}\' does not  ' \
+                         'match the corresponding number of either their ' \
                          'titles: \'{}\', or sizes: \'{}\', or hosts: \'{}\' ' \
                          'returned from the peer: \'{}\''.format(
                              len(indexes), len(titles), len(sizes), len(hosts),
                              host)
             assert len(indexes) == len(titles) and len(indexes) == len(sizes) \
                 and len(indexes) == len(hosts), assert_err
+            for h in hosts:
+                assert h == host, 'Exception: Hostname of the peer: \'{}\' ' \
+                                  'where request is sent differs from the ' \
+                                  'hostname included in the returned ' \
+                                  'protocol ...'.format(host, h)
         except AssertionError, _e:
             print _e
             return
         for i in range(len(indexes)):
             rfc_index = RfcIndex(indexes[i], titles[i], sizes[i],
-                                 hostname=hosts[i])
+                                 hostname=hosts[i], port=port)
             remote_rfcs.append(rfc_index)
 
 
@@ -492,9 +500,8 @@ def send_peer_rfc_request():
                 print 'RFC server: \'{}\' has expired TTL=0 for ' \
                       'RFC \'{}\'...'.format(rfc.hostname, user_index)
             else:
-                port = register_server.dict_active_peers.get(rfc.hostname)
                 client_socket = socket(AF_INET, SOCK_STREAM)
-                client_socket.connect((rfc.hostname, int(port)))
+                client_socket.connect((rfc.hostname, int(rfc.port)))
                 this_port = client_socket.getsockname()[1]
                 peer_request_message = encapsulate_peer_request_data_protocol(
                     this_port, index=user_index)
@@ -538,7 +545,7 @@ def do_show_peer():
         print 'Not Found [No other active peers in the P2P-DI system found]'
         print 'Please update list of active peers with \'pquery\' command'
     else:
-        for host, port in register_server.dict_active_peers.iteritems():
+        for port, host in register_server.dict_active_peers.iteritems():
             print 'Host: {}, Port: {}'.format(host, port)
 
 

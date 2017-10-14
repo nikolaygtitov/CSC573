@@ -220,7 +220,7 @@ def execute_request(method, host, port, cookie):
                 dict_active_peers = {}
                 for key, peer in dict_peers.iteritems():
                     if peer.flag and cookie != peer.cookie:
-                        dict_active_peers[peer.hostname] = peer.port
+                        dict_active_peers[peer.port] = peer.hostname
                 if len(dict_active_peers) > 0:
                     response_message = encapsulate_data_protocol(
                         302, 'Found',
@@ -254,7 +254,7 @@ def encapsulate_data_protocol(status_code, phrase, cookie=None,
         protocol += PROTOCOL_COOKIE.format(cookie)
     elif status_code == 302:
         active_peers = ''
-        for host, port in dict_active_peers.iteritems():
+        for port, host in dict_active_peers.iteritems():
             active_peers += PROTOCOL_ACTIVE_PEERS.format(host, port)
         protocol += active_peers
     protocol += PROTOCOL_EOP
