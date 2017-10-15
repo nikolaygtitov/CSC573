@@ -614,7 +614,7 @@ def encapsulate_rs_request_data_protocol():
     return protocol
 
 
-def send_peer_rfc_request():  # user_index):
+def send_peer_rfc_request(user_index):
     """Requests RFC document from the RFC server of active peer.
 
     The RFC document transfer happens similar to four-way handshake.
@@ -641,6 +641,7 @@ def send_peer_rfc_request():  # user_index):
                 rfc.ttl = 0
                 print 'RFC server: \'{}\' has expired TTL=0 for ' \
                       'RFC \'{}\'...'.format(rfc.hostname, user_index)
+                remote_rfcs.remove(rfc)
             else:
                 client_socket = socket(AF_INET, SOCK_STREAM)
                 try:
@@ -824,19 +825,17 @@ def extract_peer_response_data_protocol(response, host, port):
         except AssertionError, _e:
             print _e
             return
-        # Clean remote RFC list and add new RFCs indexes into the list.
-        del remote_rfcs[:]
         for i in range(len(indexes)):
             rfc_index = RfcIndex(indexes[i], titles[i], sizes[i], port,
                                  hosts[i])
             remote_rfcs.append(rfc_index)
 
 
-"""
-def do_test_1():
+def do_test():
     item_dict = {}
     cumulative_start_time = time.time()
-    for i in range(50):
+    # For test 1 change i to 50.
+    for i in range(len(remote_rfcs)):
         rfc = remote_rfcs[i]
         item_list = [rfc.index]
         start_time = time.time()
@@ -852,7 +851,6 @@ def do_test_1():
                                         info_list[2])
     print 'Cumulative download time for 50 RFSc is: {} seconds'.format(
         cumulative_finish_time - cumulative_start_time)
-"""
 
 
 # Actual program starts here.
@@ -887,11 +885,9 @@ while True:
     elif request == 'GET':
         if command_fields[1] == 'RFC' and len(command_fields) == 3:
             try:
-                # pass
+                pass
                 # user_index = int(command_fields[2])
                 # send_peer_rfc_request()
-                user_index = int(command_fields[2])
-                send_peer_rfc_request()
             except ValueError:
                 print 'Exception: RFC number provided: \'{}\' is not ' \
                       'provided type of Integer...\nusage: get rfc ' \
@@ -939,8 +935,8 @@ while True:
         for t in rfc_server_threads_list:
             t.join()
         exit('Goodbye')
-    # elif request == 'TEST_1':
-        # do_test_1()
+    elif request == 'TEST':
+        do_test()
     elif request == '':
             pass
     else:
