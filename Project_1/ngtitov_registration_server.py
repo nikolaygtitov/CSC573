@@ -193,9 +193,11 @@ class PeerRequests(threading.Thread):
                 print 'Shuts down the TCP Register Server welcoming socket...'
                 exit()
             # Read peer's request data from socket
-            request_data = connection_socket.recv(MAX_BUFFER_SIZE)
-            while len(request_data) == MAX_BUFFER_SIZE:
-                request_data += connection_socket.recv(MAX_BUFFER_SIZE)
+            message_chunk = connection_socket.recv(MAX_BUFFER_SIZE)
+            request_data = message_chunk
+            while len(message_chunk) == MAX_BUFFER_SIZE:
+                message_chunk = connection_socket.recv(MAX_BUFFER_SIZE)
+                request_data += message_chunk
             print '\n', request_data.decode()
             try:
                 assert PROTOCOL_EOP in request_data.decode(), \
