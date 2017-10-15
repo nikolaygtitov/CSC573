@@ -641,6 +641,7 @@ def send_peer_rfc_request():
                 rfc.ttl = 0
                 print 'RFC server: \'{}\' has expired TTL=0 for ' \
                       'RFC \'{}\'...'.format(rfc.hostname, user_index)
+                remote_rfcs.remove(rfc)
             else:
                 client_socket = socket(AF_INET, SOCK_STREAM)
                 try:
@@ -686,6 +687,7 @@ def send_peer_rfc_request():
                           'RFC  Server: \'{}\' Port: \'{}\' '.format(
                               rfc.hostname, rfc.port)
                     print _message
+                    remote_rfcs.remove(rfc)
                 except AssertionError, _e:
                     print _e
                 client_socket.close()
@@ -824,8 +826,7 @@ def extract_peer_response_data_protocol(response, host, port):
         except AssertionError, _e:
             print _e
             return
-        # Clean remote RFC list and add new RFCs indexes into the list.
-        del remote_rfcs[:]
+        # Add new RFC Indexes into the list of remote RFCs.
         for i in range(len(indexes)):
             rfc_index = RfcIndex(indexes[i], titles[i], sizes[i], port,
                                  hosts[i])
