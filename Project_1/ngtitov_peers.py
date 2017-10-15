@@ -289,10 +289,18 @@ class RfcRequestHandler(threading.Thread):
                 'Exception: Undefined App Layer Protocol...'
             if request_data.decode().split()[1] == 'RFC-INDEX':
                 # This is GET-INDEX RFC request
-                print 'Nikolay: this is GET RFC document 1'
                 response_message = extract_rfc_server_data_protocol(
                     request_data.decode())
                 # Send the response data back
+                #if len(response_message) > MAX_BUFFER_SIZE:
+                    # Split the string into strings of MAX_BUFFER_SIZE
+                 #   response_message_list = \
+                 #       (response_message[0 + i:MAX_BUFFER_SIZE + i] for i in
+                 #        range(0, len(response_message), MAX_BUFFER_SIZE))
+                 #   for response_message_string in response_message_list:
+                 #       self.connection_socket.send(
+                 #           response_message_string.encode())
+                #else:
                 self.connection_socket.send(response_message.encode())
             elif request_data.decode().split()[1] == 'RFC':
                 # This is GET RFC document request
@@ -305,7 +313,6 @@ class RfcRequestHandler(threading.Thread):
                 # Once response is sent back and if this was successful GET RFC
                 # request, send RFC file back
                 if ('OK' and '200') in response_message:
-                    print 'Nikolay: This is Get RFC document 2'
                     # Ensure peer is ready to accept binary data
                     peer_response = self.connection_socket.recv(MAX_BUFFER_SIZE)
                     assert 'Accepting' in peer_response.decode(), \
@@ -612,7 +619,7 @@ def encapsulate_rs_request_data_protocol():
     return protocol
 
 
-def send_peer_rfc_request():  # user_index):
+def send_peer_rfc_request(user_index):
     """Requests RFC document from the RFC server of active peer.
 
     The RFC document transfer happens similar to four-way handshake.
@@ -715,13 +722,13 @@ def send_peer_rfc_query_request():
                 this_port)
             # Send request to the RFC server.
             client_socket.send(peer_request_message.encode())
-            peer_response_message = client_socket.recv(MAX_BUFFER_SIZE)
-            print 'Size of response message: ', len(peer_response_message)
-            while len(peer_response_message) == MAX_BUFFER_SIZE:
-                print 'Nikolay'
-                peer_response_message += client_socket.recv(MAX_BUFFER_SIZE)
+            message_chunk = client_socket.recv(MAX_BUFFER_SIZE)
+            peer_response_message = message_chunk
+            while len(message_chunk) == MAX_BUFFER_SIZE:
+                message_chunk = client_socket.recv(MAX_BUFFER_SIZE)
+                peer_response_message += message_chunk
             print peer_response_message.decode()
-            assert PROTOCOL_EOP in peer_response_message, \
+            assert PROTOCOL_EOP in peer_response_message.decode(), \
                 'Exception: Undefined App Layer Protocol...'
             # Extract the data from RFC Server response message.
             extract_peer_response_data_protocol(peer_response_message, host,
@@ -828,7 +835,7 @@ def extract_peer_response_data_protocol(response, host, port):
                                  hosts[i])
             remote_rfcs.append(rfc_index)
 
-"""
+
 def do_test_1():
     item_dict = {}
     cumulative_start_time = time.time()
@@ -836,7 +843,7 @@ def do_test_1():
         rfc = remote_rfcs[i]
         item_list = [rfc.index]
         start_time = time.time()
-        send_peer_rfc_request(rfc.index)
+        send_peer_rfc_request(int(rfc.index))
         finish_time = time.time()
         item_list.append(finish_time - start_time)
         item_list.append(finish_time - cumulative_start_time)
@@ -848,7 +855,6 @@ def do_test_1():
                                         info_list[2])
     print 'Cumulative download time for 50 RFSc is: {} seconds'.format(
         cumulative_finish_time - cumulative_start_time)
-"""
 
 
 # Actual program starts here.
@@ -884,8 +890,8 @@ while True:
         if command_fields[1] == 'RFC' and len(command_fields) == 3:
             try:
                 pass
-                user_index = int(command_fields[2])
-                send_peer_rfc_request()
+                # user_index = int(command_fields[2])
+                # send_peer_rfc_request()
             except ValueError:
                 print 'Exception: RFC number provided: \'{}\' is not ' \
                       'provided type of Integer...\nusage: get rfc ' \
@@ -933,8 +939,8 @@ while True:
         for t in rfc_server_threads_list:
             t.join()
         exit('Goodbye')
-    # elif request == 'TEST_1':
-    #    do_test_1()
+    elif request == 'TEST_1':
+        do_test_1()
     elif request == '':
             pass
     else:
