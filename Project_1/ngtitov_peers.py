@@ -289,7 +289,6 @@ class RfcRequestHandler(threading.Thread):
                 'Exception: Undefined App Layer Protocol...'
             if request_data.decode().split()[1] == 'RFC-INDEX':
                 # This is GET-INDEX RFC request
-                print 'Nikolay: this is GET RFC document 1'
                 response_message = extract_rfc_server_data_protocol(
                     request_data.decode())
                 # Send the response data back
@@ -305,7 +304,6 @@ class RfcRequestHandler(threading.Thread):
                 # Once response is sent back and if this was successful GET RFC
                 # request, send RFC file back
                 if ('OK' and '200') in response_message:
-                    print 'Nikolay: This is Get RFC document 2'
                     # Ensure peer is ready to accept binary data
                     peer_response = self.connection_socket.recv(MAX_BUFFER_SIZE)
                     assert 'Accepting' in peer_response.decode(), \
@@ -716,9 +714,7 @@ def send_peer_rfc_query_request():
             # Send request to the RFC server.
             client_socket.send(peer_request_message.encode())
             peer_response_message = client_socket.recv(MAX_BUFFER_SIZE)
-            print 'Size of response message: ', len(peer_response_message)
             while len(peer_response_message) == MAX_BUFFER_SIZE:
-                print 'Nikolay'
                 peer_response_message += client_socket.recv(MAX_BUFFER_SIZE)
             print peer_response_message.decode()
             assert PROTOCOL_EOP in peer_response_message, \
@@ -861,7 +857,6 @@ while True:
     elif request == 'GET':
         if command_fields[1] == 'RFC' and len(command_fields) == 3:
             try:
-                pass
                 user_index = int(command_fields[2])
                 send_peer_rfc_request()
             except ValueError:
