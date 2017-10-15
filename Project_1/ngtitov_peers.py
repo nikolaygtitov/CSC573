@@ -612,7 +612,7 @@ def encapsulate_rs_request_data_protocol():
     return protocol
 
 
-def send_peer_rfc_request():  # user_index):
+def send_peer_rfc_request():
     """Requests RFC document from the RFC server of active peer.
 
     The RFC document transfer happens similar to four-way handshake.
@@ -828,28 +828,6 @@ def extract_peer_response_data_protocol(response, host, port):
                                  hosts[i])
             remote_rfcs.append(rfc_index)
 
-"""
-def do_test_1():
-    item_dict = {}
-    cumulative_start_time = time.time()
-    for i in range(50):
-        rfc = remote_rfcs[i]
-        item_list = [rfc.index]
-        start_time = time.time()
-        send_peer_rfc_request(rfc.index)
-        finish_time = time.time()
-        item_list.append(finish_time - start_time)
-        item_list.append(finish_time - cumulative_start_time)
-        item_dict[i + 1] = item_list
-    cumulative_finish_time = time.time()
-    for key, info_list in item_dict.iteritems():
-        print '{}: RFC {} downloaded time: {} seconds. Cumulative download ' \
-              'time: {} seconds'.format(key, info_list[0], info_list[1],
-                                        info_list[2])
-    print 'Cumulative download time for 50 RFSc is: {} seconds'.format(
-        cumulative_finish_time - cumulative_start_time)
-"""
-
 
 # Actual program starts here.
 # Create and start new main thread that deals with the RFC server.
@@ -933,8 +911,6 @@ while True:
         for t in rfc_server_threads_list:
             t.join()
         exit('Goodbye')
-    # elif request == 'TEST_1':
-    #    do_test_1()
     elif request == '':
             pass
     else:
