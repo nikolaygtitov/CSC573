@@ -42,8 +42,8 @@ import time
 from socket import *
 from random import randint
 
-# The Application Layer Protocol for peer-to-RS REQUEST communication of
-# P2P-DI/1.0 is defined as follows:
+# The Application Layer Protocol for peer-to-RegisterServer REQUEST
+# communication of P2P-DI/1.0 protocol is defined:
 """
 -------------------------------------------------
 | Type    | Method | Protocol name and version  |
@@ -54,14 +54,14 @@ from random import randint
 -------------------------------------------------
 |  OS:    |               System                |
 -------------------------------------------------
-| Date:   |  Year-Month-Day Hour-Min-Sec-Msec   |
+| Date:   |  Year-Month-Day Hour-Min-Sec-mSec   |
 -------------------------------------------------
 |            EOP (End of Protocol)              |
 -------------------------------------------------
 """
 
-# The Application Layer Protocol for peer-to-peer REQUEST communication of
-# P2P-DI/1.0 is defined as follows:
+# The Application Layer Protocol for peer-to-RFCServer (another peer) REQUEST
+# communication of P2P-DI/1.0 protocol is defined:
 """
 -----------------------------------------------------------------
 | Type  | Method | Index (optional) | Protocol name and version |
@@ -70,14 +70,14 @@ from random import randint
 -----------------------------------------------------------------
 |  OS:  |                       System                          |
 -----------------------------------------------------------------
-| Date: |         Year-Month-Day Hour-Min-Sec-Msec              |
+| Date: |         Year-Month-Day Hour-Min-Sec-mSec              |
 -----------------------------------------------------------------
 |                  EOP (End of Protocol)                        |
 -----------------------------------------------------------------
 """
 
-# The Application Layer Protocol for RS-to-peer RESPONSE communication of
-# P2P-DI/1.0 is defined as follows:
+# The Application Layer Protocol for RegisterServer-to-peer RESPONSE
+# communication of P2P-DI/1.0 protocol is defined:
 """
 -----------------------------------------------------
 | Protocol name and version | Status Code | Phrase  |
@@ -94,8 +94,8 @@ from random import randint
 -----------------------------------------------------
 """
 
-# The Application Layer Protocol for peer-to-peer in RESPONSE communication of
-# RFCQuery request of P2P-DI/1.0 is defined as follows:
+# The Application Layer Protocol for RFCServer-to-peer RESPONSE
+# communication for RFCQuery request of P2P-DI/1.0 protocol is defined:
 """
 -----------------------------------------------------------------------
 | Protocol name and version |        Status Code       |    Phrase    |
@@ -110,9 +110,10 @@ from random import randint
 -----------------------------------------------------------------------
 """
 
-# The Application Layer Protocol for peer-to-peer in RESPONSE communication of
-# Get RFC request of the P2P-DI/1.0 is defined as follows. Note that header
-# protocol comes as plane text, but the requested RFC in the binary mode:
+# The Application Layer Protocol for RFCServer-to-peer RESPONSE
+# communication for Get RFC request of P2P-DI/1.0 protocol is defined.
+# Note that header protocol comes as plane text, but the requested RFC
+# document itself in the binary mode:
 """
 -----------------------------------------------------
 | Protocol name and version | Status Code | Phrase  |
@@ -128,6 +129,7 @@ from random import randint
 |                   (Binary Mode)                   |
 |                                                   |
 -----------------------------------------------------
+                RFC Server closes socket
 """
 
 # Initialization of constants
@@ -182,7 +184,7 @@ except AssertionError:
 
 
 class RfcServer(threading.Thread):
-    """Implements RFC server here as the main thread.
+    """Implements RFC Server as the main thread.
 
     It handles multiple simultaneous connections for downloads (of the RFC
     index or an RFC document) by remote peers. It has a main thread that
@@ -209,8 +211,8 @@ class RfcServer(threading.Thread):
                 if self.running:
                     # Spawn a new thread that handles this request and go
                     # back to wait on accept
-                    new_rfc_server_thread = HandleRfcRequest(connection_socket,
-                                                             address)
+                    new_rfc_server_thread = RfcRequestHandler(connection_socket,
+                                                              address)
                     new_rfc_server_thread.start()
                     rfc_server_threads_list.append(new_rfc_server_thread)
             finally:
@@ -232,13 +234,13 @@ class RfcServer(threading.Thread):
         del self_socket
 
 
-class HandleRfcRequest(threading.Thread):
-    """Implements request came from other peer as newly created thread.
+class RfcRequestHandler(threading.Thread):
+    """Handles request of other peer as a newly created thread.
 
-    This is a new thread that was created by the main thread. It reads the
-    request by extracting data from P2P-DI/1.0 protocol, executes request,
-    builds response message by encapsulating return data based on P2P-DI/1.0
-    protocol and sends it back to the peer which made request.
+    This is a new thread that was created by the main RFC Server thread. It
+    reads the request by extracting data from P2P-DI/1.0 protocol, executes
+    request, builds response message by encapsulating return data based on
+    P2P-DI/1.0 protocol and sends it back to the peer which made request.
 
     Attributes:
         connection_socket: socket object for send and receive data.
@@ -428,7 +430,8 @@ def do_show_rfc_remote():
 
 def do_show_rfc_local():
     """Displays/prints to the console all local RFC indexes that are kept in
-    the file space of the user."""
+    the file space of the user.
+    """
     if local_rfcs:
         print 'Local RFCs stored in the directory: \'{}\''.format(file_space)
         for index, rfc in local_rfcs.iteritems():
@@ -441,17 +444,28 @@ def do_show_rfc_local():
         print 'No RFCs are found in the directory \'{}\''.format(file_space)
 
 
+def do_show_peer():
+    """Displays/prints all active peers in the P2P-DI system."""
+    if not register_server.list_active_peers:
+        print 'Not Found [No other active peers in the P2P-DI system found]'
+        print 'Please update list of active peers with \'pquery\' command'
+    else:
+        for dict_active_peer in register_server.list_active_peers:
+            host, port = dict_active_peer.items()[0]
+            print 'Host: {}, Port: {}'.format(host, port)
+
+
 class RegisterServer:
     """Facilitates communication with Register Server.
 
     Attributes:
         cookie: assigned to this peer by RS.
-        dict_active_peers: dictionary of active peers.
+        list_active_peers: list of dictionaries of active peers.
     """
     def __init__(self):
         """Initiates RegisterServer with attributes."""
         self.cookie = None
-        self.dict_active_peers = None
+        self.list_active_peers = None
 
 
 def send_rs_request():
@@ -475,7 +489,7 @@ def send_rs_request():
         assert PROTOCOL_EOP in rs_response_message, \
             'Exception: Undefined App Layer Protocol...'
         # Extract response message from protocol from Register Server
-        register_server.dict_active_peers = extract_rs_response_data_protocol(
+        register_server.list_active_peers = extract_rs_response_data_protocol(
             rs_response_message.decode())
     except AssertionError, _e:
         print _e
@@ -497,7 +511,9 @@ def extract_rs_response_data_protocol(response):
         response: the entire P2P-DI/1.0 protocol as a string.
 
     Returns:
-        Protocol that contains response message to the peer.
+        List of dictionaries of all active peers in the form of the
+        [ {Port: Hostname}, {Port: Hostname}, {Port: Hostname}, ...]
+        Active peers are retrieved from the Registration Server.
     """
     response_list = response.split()
     version = response_list[0]
@@ -524,8 +540,11 @@ def extract_rs_response_data_protocol(response):
                 'the corresponding number of their ports: \'{}\' return from ' \
                 'the Register Server \'{}\''.format(len(hosts), len(ports),
                                                     SERVER_IP)
-            dict_active_peers = dict(zip(ports, hosts))
-            return dict_active_peers
+            list_active_peers = []
+            for i in range(len(hosts)):
+                dict_active_peer = dict([(hosts[i], ports[i])])
+                list_active_peers.append(dict_active_peer)
+            return list_active_peers
         except AssertionError, _e:
             print _e
             return None
@@ -553,139 +572,6 @@ def encapsulate_rs_request_data_protocol():
     return protocol
 
 
-def send_peer_rfc_query_request():
-    """Requests RFC-Index from the RFC server of active peer.
-
-    The RFC-Index request is made by the user. It creates TCP client socket
-    for RFC Server to one of the active peers on the port that was obtained
-    from Register Server and initiate connection with that RFC server. Then
-    it creates the RFC-Index request and encapsulates data into P2P-DI/1.0
-    protocol. Sends request and waits for the response from RFC server. Once
-    response is obtained it call for extraction of the data protocol.
-
-    """
-    if not register_server.dict_active_peers:
-        print 'No active peers found... RFC query is not sent...'
-        return
-    for port, host in register_server.dict_active_peers.iteritems():
-        client_socket = socket(AF_INET, SOCK_STREAM)
-        try:
-            client_socket.connect((host, int(port)))
-            this_port = client_socket.getsockname()[1]
-            # Create RFC-Index request message.
-            peer_request_message = encapsulate_peer_request_data_protocol(
-                this_port)
-            # Send request to the RFC server.
-            client_socket.send(peer_request_message.encode())
-            peer_response_message = client_socket.recv(MAX_BUFFER_SIZE)
-            while len(peer_response_message) == MAX_BUFFER_SIZE:
-                peer_response_message += client_socket.recv(MAX_BUFFER_SIZE)
-            print peer_response_message.decode()
-            assert PROTOCOL_EOP in peer_response_message, \
-                'Exception: Undefined App Layer Protocol...'
-            # Extract the data from RFC Server response message.
-            extract_peer_response_data_protocol(peer_response_message, host,
-                                                port)
-        except AssertionError, _e:
-            print _e
-        except (error, herror, gaierror, timeout), (_value, _message):
-            print 'Exception: Creating TCP socket and connecting to RFC ' \
-                  'Server: \'{}\' Port: \'{}\' '.format(host, port)
-            print _message
-        client_socket.close()
-        del client_socket
-
-
-def encapsulate_peer_request_data_protocol(port, index=None):
-    """Encapsulates request data addressed to RFC Server from the user into
-    P2P-DI/1.0 protocol.
-
-    Builds the RFC server request by encapsulating the data obtained from
-    the user and includes additional parameters into P2P-DI/1.0 protocol.
-
-    Returns:
-        Protocol that contains request message to the RFC Server.
-    """
-    if index is None:
-        header = GET_RFC_QUERY_HEADER
-    else:
-        header = GET_RFC_HEADER.format(index)
-    host_port = PROTOCOL_HOST_PORT.format(rfc_host_server, port)
-    _os_ = PROTOCOL_OS.format(platform.platform())
-    date = PROTOCOL_DATE.format(datetime.datetime.now())
-    protocol = header + host_port + _os_ + date + PROTOCOL_EOP
-    return protocol
-
-
-def extract_peer_response_data_protocol(response, host, port):
-    """Extracts RFC-Indexes and adds them to the list from the protocol that
-    is received from the RFC Server.
-
-    It reads the response message and extracts RFC-Indexes data from
-    P2P-DI/1.0 protocol, creates new object for each RFC-Index it obtain by
-    invoking RfcIndex class and adds obtained data into remote_frc list.
-
-    Args:
-        response: the entire P2P-DI/1.0 protocol as a string.
-        host: hostname of the RFC server.
-        port: port of the RFC server.
-
-    """
-    response_list = response.split()
-    version = response_list[0]
-    try:
-        assert version == PROTOCOL, 'Exception: Undefined App Layer Protocol...'
-    except AssertionError, _e:
-        print _e
-        return
-    status_code = int(response_list[1])
-    # Ensure that RFC query request was successful.
-    if request == 'RFCQUERY' and status_code == 200:
-        # First extract the titles.
-        titles = []
-        for i in range(len(response_list)):
-            if i < len(response_list):
-                if response_list[i] == 'Title:' and response_list[
-                            i + 1] == '<start>':
-                    title = ''
-                    i += 2
-                    while response_list[i] != '<end>':
-                        title += response_list[i] + ' '
-                        del response_list[i]
-                    title = title.strip()
-                    titles.append(title)
-        # Extract indexes, sizes, and hosts.
-        indexes = [response_list[i + 1] for i in range(len(response_list)) if
-                   response_list[i] == 'Index:']
-        sizes = [response_list[i + 1] for i in range(len(response_list)) if
-                 response_list[i] == 'Size:']
-        hosts = [response_list[i + 1] for i in range(len(response_list)) if
-                 response_list[i] == 'Host:']
-        try:
-            assert_err = 'Exception: Number of RFC indexes: \'{}\' does not  ' \
-                         'match the corresponding number of either their ' \
-                         'titles: \'{}\', or sizes: \'{}\', or hosts: \'{}\' ' \
-                         'returned from the peer: \'{}\''.format(
-                             len(indexes), len(titles), len(sizes), len(hosts),
-                             host)
-            # Perform test if received data is consistent.
-            assert len(indexes) == len(titles) and len(indexes) == len(sizes) \
-                and len(indexes) == len(hosts), assert_err
-            for h in hosts:
-                assert h == host, 'Exception: Hostname of the peer: \'{}\' ' \
-                                  'where request is sent differs from the ' \
-                                  'hostname included in the returned ' \
-                                  'protocol ...'.format(host, h)
-        except AssertionError, _e:
-            print _e
-            return
-        # Add to the list of remote RFCs.
-        for i in range(len(indexes)):
-            rfc_index = RfcIndex(indexes[i], titles[i], sizes[i],
-                                 hostname=hosts[i], port=port)
-            remote_rfcs.append(rfc_index)
-
-
 def send_peer_rfc_request():
     """Requests RFC document from the RFC server of active peer.
 
@@ -700,7 +586,6 @@ def send_peer_rfc_request():
     accepting key back to the RFC server. Once RFC server received
     acceptance key, it sends RFC document in binary mode back to this
     client. And clients writes the file in the file space of the user.
-
     """
     if user_index in local_rfcs:
         print 'Requested RFC \'{}\' exists locally in \'{}\' ' \
@@ -760,16 +645,141 @@ def send_peer_rfc_request():
         user_index)
 
 
-def do_show_peer():
-    """Displays/prints all active peers in the P2P-DI system."""
-    if not register_server.dict_active_peers:
-        print 'Not Found [No other active peers in the P2P-DI system found]'
-        print 'Please update list of active peers with \'pquery\' command'
+def send_peer_rfc_query_request():
+    """Requests RFC-Index from the RFC server of active peer.
+
+    The RFC-Index request is made by the user. It creates TCP client socket
+    for RFC Server to one of the active peers on the port that was obtained
+    from Register Server and initiates connection with that RFC server. Then
+    it creates the RFC-Index request and encapsulates data into P2P-DI/1.0
+    protocol. Sends request and waits for the response from RFC server. Once
+    response is obtained it call for extraction of the data protocol.
+    """
+    if not register_server.list_active_peers:
+        print 'No active peers found... RFC query is not sent...'
+        return
+    for dict_active_peer in register_server.list_active_peers:
+        host, port = dict_active_peer.items()[0]
+        client_socket = socket(AF_INET, SOCK_STREAM)
+        try:
+            client_socket.connect((host, int(port)))
+            this_port = client_socket.getsockname()[1]
+            # Create RFC-Index request message.
+            peer_request_message = encapsulate_peer_request_data_protocol(
+                this_port)
+            # Send request to the RFC server.
+            client_socket.send(peer_request_message.encode())
+            peer_response_message = client_socket.recv(MAX_BUFFER_SIZE)
+            while len(peer_response_message) == MAX_BUFFER_SIZE:
+                peer_response_message += client_socket.recv(MAX_BUFFER_SIZE)
+            print peer_response_message.decode()
+            assert PROTOCOL_EOP in peer_response_message, \
+                'Exception: Undefined App Layer Protocol...'
+            # Extract the data from RFC Server response message.
+            extract_peer_response_data_protocol(peer_response_message, host,
+                                                port)
+        except AssertionError, _e:
+            print _e
+        except (error, herror, gaierror, timeout), (_value, _message):
+            print 'Exception: Creating TCP socket and connecting to RFC ' \
+                  'Server: \'{}\' Port: \'{}\' '.format(host, port)
+            print _message
+        client_socket.close()
+        del client_socket
+
+
+def encapsulate_peer_request_data_protocol(port, index=None):
+    """Encapsulates request data addressed to RFC Server from the user into
+    P2P-DI/1.0 protocol.
+
+    Builds the RFC server request by encapsulating the data obtained from
+    the user and includes additional parameters into P2P-DI/1.0 protocol.
+
+    Returns:
+        Protocol that contains request message to the RFC Server.
+    """
+    if index is None:
+        header = GET_RFC_QUERY_HEADER
     else:
-        for port, host in register_server.dict_active_peers.iteritems():
-            print 'Host: {}, Port: {}'.format(host, port)
+        header = GET_RFC_HEADER.format(index)
+    host_port = PROTOCOL_HOST_PORT.format(rfc_host_server, port)
+    _os_ = PROTOCOL_OS.format(platform.platform())
+    date = PROTOCOL_DATE.format(datetime.datetime.now())
+    protocol = header + host_port + _os_ + date + PROTOCOL_EOP
+    return protocol
 
 
+def extract_peer_response_data_protocol(response, host, port):
+    """Extracts RFC-Indexes and adds them to the list maintained by the
+    main thread.
+
+    It reads the response message from one of the RFC Servers and extracts
+    RFC-Indexes data from P2P-DI/1.0 protocol, creates new object for each
+    RFC-Index it obtain by invoking RfcIndex class and adds obtained data
+    into remote_frc list.
+
+    Args:
+        response: the entire P2P-DI/1.0 protocol as a string.
+        host: hostname of the RFC server.
+        port: port of the RFC server.
+
+    Returns: Modifies the list of remote RFCs. Does not return anything.
+    """
+    response_list = response.split()
+    version = response_list[0]
+    try:
+        assert version == PROTOCOL, 'Exception: Undefined App Layer Protocol...'
+    except AssertionError, _e:
+        print _e
+        return
+    status_code = int(response_list[1])
+    # Ensure that RFC query request was successful.
+    if request == 'RFCQUERY' and status_code == 200:
+        # First extract the titles.
+        titles = []
+        for i in range(len(response_list)):
+            if i < len(response_list):
+                if response_list[i] == 'Title:' and response_list[
+                            i + 1] == '<start>':
+                    title = ''
+                    i += 2
+                    while response_list[i] != '<end>':
+                        title += response_list[i] + ' '
+                        del response_list[i]
+                    title = title.strip()
+                    titles.append(title)
+        # Extract indexes, sizes, and hosts.
+        indexes = [response_list[i + 1] for i in range(len(response_list)) if
+                   response_list[i] == 'Index:']
+        sizes = [response_list[i + 1] for i in range(len(response_list)) if
+                 response_list[i] == 'Size:']
+        hosts = [response_list[i + 1] for i in range(len(response_list)) if
+                 response_list[i] == 'Host:']
+        try:
+            assert_err = 'Exception: Number of RFC indexes: \'{}\' does not  ' \
+                         'match the corresponding number of either their ' \
+                         'titles: \'{}\', or sizes: \'{}\', or hosts: \'{}\' ' \
+                         'returned from the peer: \'{}\''.format(
+                             len(indexes), len(titles), len(sizes), len(hosts),
+                             host)
+            # Perform test if received data is consistent.
+            assert len(indexes) == len(titles) and len(indexes) == len(sizes) \
+                and len(indexes) == len(hosts), assert_err
+            for h in hosts:
+                assert h == host, 'Exception: Hostname of the peer: \'{}\' ' \
+                                  'where request is sent differs from the ' \
+                                  'hostname included in the returned ' \
+                                  'protocol ...'.format(host, h)
+        except AssertionError, _e:
+            print _e
+            return
+        # Add to the list of remote RFCs.
+        for i in range(len(indexes)):
+            rfc_index = RfcIndex(indexes[i], titles[i], sizes[i],
+                                 hostname=hosts[i], port=port)
+            remote_rfcs.append(rfc_index)
+
+# Actual program starts here.
 # Create a TCP server welcoming socket and bind it to a well-known port
 rfc_server_socket = socket(AF_INET, SOCK_STREAM)
 try:

@@ -217,18 +217,23 @@ def execute_request(method, host, port, cookie):
             else:
                 peer = dict_peers.get(cookie)
                 peer.update()
-                dict_active_peers = {}
-                for key, peer in dict_peers.iteritems():
-                    if peer.flag and cookie != peer.cookie:
-                        dict_active_peers[peer.port] = peer.hostname
-                if len(dict_active_peers) > 0:
+                if not peer.flag:
                     response_message = encapsulate_data_protocol(
-                        302, 'Found',
-                        dict_active_peers=dict_active_peers)
+                        403, 'Forbidden [Peer is NOT register with the RS]')
                 else:
-                    response_message = encapsulate_data_protocol(
-                        404, 'Not Found [No other active peers in the P2P-DI '
-                        'system found]')
+                    list_active_peers = []
+                    for key, active_peer in dict_peers.iteritems():
+                        if active_peer.flag and cookie != active_peer.cookie:
+                            dict_active_peer = dict([(active_peer.hostname,
+                                                      active_peer.port)])
+                            list_active_peers.append(dict_active_peer)
+                    if list_active_peers:
+                        response_message = encapsulate_data_protocol(
+                            302, 'Found', list_active_peers=list_active_peers)
+                    else:
+                        response_message = encapsulate_data_protocol(
+                            404, 'Not Found [No other active peers in the '
+                                 'P2P-DI system found]')
         elif method == 'KEEPALIVE':
             peer = dict_peers.get(cookie)
             peer.update()
@@ -247,14 +252,15 @@ def execute_request(method, host, port, cookie):
 
 
 def encapsulate_data_protocol(status_code, phrase, cookie=None,
-                              dict_active_peers=None):
+                              list_active_peers=None):
     header = PROTOCOL + STATUS_CODE_PHRASE.format(status_code, phrase)
     protocol = header
     if status_code in [200, 201] and cookie is not None:
         protocol += PROTOCOL_COOKIE.format(cookie)
     elif status_code == 302:
         active_peers = ''
-        for port, host in dict_active_peers.iteritems():
+        for dict_active_peer in list_active_peers:
+            host, port = dict_active_peer.items()[0]
             active_peers += PROTOCOL_ACTIVE_PEERS.format(host, port)
         protocol += active_peers
     protocol += PROTOCOL_EOP
