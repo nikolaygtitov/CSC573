@@ -287,34 +287,36 @@ class RfcRequestHandler(threading.Thread):
         try:
             assert PROTOCOL_EOP in request_data.decode(), \
                 'Exception: Undefined App Layer Protocol...'
-            # This is GET RFC request
-            if request_data.decode().split()[1] == 'RFC':
+            if request_data.decode().split()[1] == 'RFC-INDEX':
+                # This is GET-INDEX RFC request
+                print 'Nikolay: this is GET RFC document 1'
+                response_message = extract_rfc_server_data_protocol(
+                    request_data.decode())
+                # Send the response data back
+                self.connection_socket.send(response_message.encode())
+            elif request_data.decode().split()[1] == 'RFC':
+                # This is GET RFC document request
                 rfc_file_name = RFC_FILE.format(
                     file_space, request_data.decode().split()[2])
                 response_message = extract_rfc_server_data_protocol(
                     request_data.decode(), os.stat(rfc_file_name).st_size)
-            # This is GET-INDEX request
-            else:
-                rfc_file_name = None
-                response_message = extract_rfc_server_data_protocol(
-                    request_data.decode())
-            # Send the response data back
-            self.connection_socket.send(response_message.encode())
-            # Once response is sent back and if this was GET RFC request,
-            # send RFC file back
-            if request_data.decode().split()[1] == 'RFC' and ('OK' and '200') \
-                    in response_message:
-                # Ensure peer is ready to accept binary data
-                peer_response = self.connection_socket.recv(MAX_BUFFER_SIZE)
-                assert 'Accepting' in peer_response.decode(), \
-                    'Exception: Synchronization of messages ...'
-                rfc_file = open(rfc_file_name, 'rb')
-                sending_data = rfc_file.read(MAX_BUFFER_SIZE)
-                while sending_data:
-                    self.connection_socket.send(sending_data)
+                # Send the response data back
+                self.connection_socket.send(response_message.encode())
+                # Once response is sent back and if this was successful GET RFC
+                # request, send RFC file back
+                if ('OK' and '200') in response_message:
+                    print 'Nikolay: This is Get RFC document 2'
+                    # Ensure peer is ready to accept binary data
+                    peer_response = self.connection_socket.recv(MAX_BUFFER_SIZE)
+                    assert 'Accepting' in peer_response.decode(), \
+                        'Exception: Synchronization of messages ...'
+                    rfc_file = open(rfc_file_name, 'rb')
                     sending_data = rfc_file.read(MAX_BUFFER_SIZE)
-                rfc_file.close()
-                self.connection_socket.shutdown(SHUT_RDWR)
+                    while sending_data:
+                        self.connection_socket.send(sending_data)
+                        sending_data = rfc_file.read(MAX_BUFFER_SIZE)
+                    rfc_file.close()
+                    self.connection_socket.shutdown(SHUT_RDWR)
         except AssertionError, _e:
             print _e
         # Close the socket and delete it since this thread is done
@@ -610,7 +612,7 @@ def encapsulate_rs_request_data_protocol():
     return protocol
 
 
-def send_peer_rfc_request():
+def send_peer_rfc_request():  # user_index):
     """Requests RFC document from the RFC server of active peer.
 
     The RFC document transfer happens similar to four-way handshake.
@@ -714,7 +716,9 @@ def send_peer_rfc_query_request():
             # Send request to the RFC server.
             client_socket.send(peer_request_message.encode())
             peer_response_message = client_socket.recv(MAX_BUFFER_SIZE)
+            print 'Size of response message: ', len(peer_response_message)
             while len(peer_response_message) == MAX_BUFFER_SIZE:
+                print 'Nikolay'
                 peer_response_message += client_socket.recv(MAX_BUFFER_SIZE)
             print peer_response_message.decode()
             assert PROTOCOL_EOP in peer_response_message, \
@@ -824,6 +828,28 @@ def extract_peer_response_data_protocol(response, host, port):
                                  hosts[i])
             remote_rfcs.append(rfc_index)
 
+"""
+def do_test_1():
+    item_dict = {}
+    cumulative_start_time = time.time()
+    for i in range(50):
+        rfc = remote_rfcs[i]
+        item_list = [rfc.index]
+        start_time = time.time()
+        send_peer_rfc_request(rfc.index)
+        finish_time = time.time()
+        item_list.append(finish_time - start_time)
+        item_list.append(finish_time - cumulative_start_time)
+        item_dict[i + 1] = item_list
+    cumulative_finish_time = time.time()
+    for key, info_list in item_dict.iteritems():
+        print '{}: RFC {} downloaded time: {} seconds. Cumulative download ' \
+              'time: {} seconds'.format(key, info_list[0], info_list[1],
+                                        info_list[2])
+    print 'Cumulative download time for 50 RFSc is: {} seconds'.format(
+        cumulative_finish_time - cumulative_start_time)
+"""
+
 
 # Actual program starts here.
 # Create and start new main thread that deals with the RFC server.
@@ -857,6 +883,7 @@ while True:
     elif request == 'GET':
         if command_fields[1] == 'RFC' and len(command_fields) == 3:
             try:
+                pass
                 user_index = int(command_fields[2])
                 send_peer_rfc_request()
             except ValueError:
@@ -906,6 +933,8 @@ while True:
         for t in rfc_server_threads_list:
             t.join()
         exit('Goodbye')
+    # elif request == 'TEST_1':
+    #    do_test_1()
     elif request == '':
             pass
     else:
