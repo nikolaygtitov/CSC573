@@ -280,9 +280,11 @@ class RfcRequestHandler(threading.Thread):
     def run(self):
         """Runs the new thread to execute request and send response back."""
         # Read peer's request data from socket
-        request_data = self.connection_socket.recv(MAX_BUFFER_SIZE)
-        while len(request_data) == MAX_BUFFER_SIZE:
-            request_data += self.connection_socket.recv(MAX_BUFFER_SIZE)
+        message_chunk = self.connection_socket.recv(MAX_BUFFER_SIZE)
+        request_data = message_chunk
+        while len(message_chunk) == MAX_BUFFER_SIZE:
+            message_chunk = self.connection_socket.recv(MAX_BUFFER_SIZE)
+            request_data += message_chunk
         print '\n', request_data.decode()
         try:
             assert PROTOCOL_EOP in request_data.decode(), \
@@ -514,11 +516,13 @@ def send_rs_request():
         client_socket.connect((SERVER_IP, SERVER_PORT))
         rs_request_message = encapsulate_rs_request_data_protocol()
         client_socket.send(rs_request_message.encode())
-        rs_response_message = client_socket.recv(MAX_BUFFER_SIZE)
-        while len(rs_response_message) == MAX_BUFFER_SIZE:
-            rs_response_message += client_socket.recv(MAX_BUFFER_SIZE)
+        message_chunk = client_socket.recv(MAX_BUFFER_SIZE)
+        rs_response_message = message_chunk
+        while len(message_chunk) == MAX_BUFFER_SIZE:
+            message_chunk = client_socket.recv(MAX_BUFFER_SIZE)
+            rs_response_message += message_chunk
         print rs_response_message.decode()
-        assert PROTOCOL_EOP and PROTOCOL in rs_response_message, \
+        assert PROTOCOL_EOP and PROTOCOL in rs_response_message.decode(), \
             'Exception: Undefined App Layer Protocol...'
         # Call helper function to extract response data
         extract_rs_response_data_protocol(rs_response_message.decode())
@@ -647,13 +651,14 @@ def send_peer_rfc_request():
                         encapsulate_peer_request_data_protocol(this_port,
                                                                index=user_index)
                     client_socket.send(peer_request_message.encode())
-                    peer_response_message = client_socket.recv(MAX_BUFFER_SIZE)
-                    while len(peer_response_message) == MAX_BUFFER_SIZE:
-                        peer_response_message += client_socket.recv(
-                            MAX_BUFFER_SIZE)
+                    message_chunk = client_socket.recv(MAX_BUFFER_SIZE)
+                    peer_response_message = message_chunk
+                    while len(message_chunk) == MAX_BUFFER_SIZE:
+                        message_chunk = client_socket.recv(MAX_BUFFER_SIZE)
+                        peer_response_message += message_chunk
                     print peer_response_message.decode()
                     # Ensure RFC server has requested RFC document.
-                    assert PROTOCOL_EOP in peer_response_message, \
+                    assert PROTOCOL_EOP in peer_response_message.decode(), \
                         'Exception: Undefined App Layer Protocol...'
                     assert 'OK' and '200' in peer_response_message.decode(), \
                         'Exception: RFC server: \'{}\' does not have ' \
@@ -713,11 +718,13 @@ def send_peer_rfc_query_request():
                 this_port)
             # Send request to the RFC server.
             client_socket.send(peer_request_message.encode())
-            peer_response_message = client_socket.recv(MAX_BUFFER_SIZE)
-            while len(peer_response_message) == MAX_BUFFER_SIZE:
-                peer_response_message += client_socket.recv(MAX_BUFFER_SIZE)
+            message_chunk = client_socket.recv(MAX_BUFFER_SIZE)
+            peer_response_message = message_chunk
+            while len(message_chunk) == MAX_BUFFER_SIZE:
+                message_chunk = client_socket.recv(MAX_BUFFER_SIZE)
+                peer_response_message += message_chunk
             print peer_response_message.decode()
-            assert PROTOCOL_EOP in peer_response_message, \
+            assert PROTOCOL_EOP in peer_response_message.decode(), \
                 'Exception: Undefined App Layer Protocol...'
             # Extract the data from RFC Server response message.
             extract_peer_response_data_protocol(peer_response_message, host,
