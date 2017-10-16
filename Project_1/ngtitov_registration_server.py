@@ -430,7 +430,7 @@ while True:
         exit('Goodbye')
     elif request == 'HELP':
         try:
-            with open('help_registration_server.txt', 'r') as fin:
+            with open('help_registration_server', 'r') as fin:
                 print fin.read()
         except Exception as e:
             print e.__doc__, type(e).__name__, e.message

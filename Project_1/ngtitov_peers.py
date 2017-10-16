@@ -898,7 +898,7 @@ while True:
         update()
     elif request == 'HELP':
         try:
-            with open('help_peers.txt', 'r') as fin:
+            with open('help_peers', 'r') as fin:
                 print fin.read()
         except Exception as e:
             print e.__doc__, type(e).__name__, e.message
