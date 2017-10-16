@@ -687,6 +687,7 @@ def send_peer_rfc_request(user_index):
                           'RFC  Server: \'{}\' Port: \'{}\' '.format(
                               rfc.hostname, rfc.port)
                     print _message
+                    remote_rfcs.remove(rfc)
                 except AssertionError, _e:
                     print _e
                 client_socket.close()
@@ -825,6 +826,7 @@ def extract_peer_response_data_protocol(response, host, port):
         except AssertionError, _e:
             print _e
             return
+        # Add new RFC Indexes into the list of remote RFCs.
         for i in range(len(indexes)):
             rfc_index = RfcIndex(indexes[i], titles[i], sizes[i], port,
                                  hosts[i])
