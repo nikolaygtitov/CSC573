@@ -36,7 +36,9 @@ Python
 *	[help_registration_server](https://github.ncsu.edu/ngtitov/CSC573/blob/master/Project_1/help_registration_server) file must be in the same location (directory) where __help_registration_server.py__ program is executed
 *	User must have distinct directory (file space) where his/her RFC files is kept. Note that no other files are permitted in the same file space except RFC files
 ### Restrictions:
-*	All RFC files initially taken from the [IETF](http://www.ietf.org/) web site and then kept at each peer's file space must be in ASCII format (.text files)
+*	All RFC files initially taken from the [IETF](http://www.ietf.org/) web site and then kept at each peer's file space must ...
+    * Be in ASCII format (.text files)
+    * Follow their given (standard) naming convention by IETF (Ex: rfc8001.txt) and must not be modified.
 *	The IP address of the register server is hard-coded as localhost. In order to change the IP address of the Register server
     * Open __ngtitov_peers.py__
     * Search for __SERVER_IP__ definition
