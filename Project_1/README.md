@@ -38,7 +38,8 @@ Python
 ### Restrictions:
 *	All RFC files initially taken from the [IETF](http://www.ietf.org/) web site and then kept at each peer's file space must ...
     * Be in ASCII format (.text files)
-    * Follow their given (standard) naming convention by IETF (Ex: rfc8001.txt) and must not be modified.
+    * Follow their given (standard) naming convention by IETF (Ex: __rfc8001.txt__). Thus, __rfc__ prefex must be followed by the number (index) of the RFC
+    * Not be modified
 *	The IP address of the register server is hard-coded as localhost. In order to change the IP address of the Register server
     * Open __ngtitov_peers.py__
     * Search for __SERVER_IP__ definition
