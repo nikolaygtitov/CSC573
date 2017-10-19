@@ -47,7 +47,7 @@ Python
 * __DO NOT__ stop either program by `\<Ctrl c\>`. Both programs are multi-threaded. Use `exit` command to stop all threads.
 ## P2P-DI/1.0 protocol
 For this project, specific application layer protocol is defined for the Register Server and peers to communicate among themselves.
-### Peer-to-Register Server P2P-DI/1.0 protocol communication protocol
+### Peer-to-Register Server P2P-DI/1.0 communication protocol
 Peer-to-Register Server __REQUEST__ message format is defined as follows:
 ```
 -------------------------------------------------
@@ -89,12 +89,14 @@ Register Server-to-Peer __RESPONSE__ message format in response for `GET PQUERY`
 -----------------------------------------------------
 ```
 Register Server-to-Peer __RESPONSE__ message  format in response for `POST LEAVE` request message is defined as follows:
+```
 -----------------------------------------------------
 | Protocol name and version | Status Code | Phrase  |
 -----------------------------------------------------
 |                EOP (End of Protocol)              |
 -----------------------------------------------------
-### Peer-to-Peer (RFC Server-to-Peer and Peer-to-RFC Server) P2P-DI/1.0 communication protocol
+```
+### Peer-to-Peer (Peer-to-RFC Server) P2P-DI/1.0 communication protocol
 Peer-to-RFC Server (another peer) `GET RFC-INDEX` __REQUEST__ message format is defined as follows:
 ```
 ----------------------------------------------
