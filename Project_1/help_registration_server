@@ -1,5 +1,5 @@
-Help: This server executes only local commands. No commands will have an effect
-on any of the registered peers.
+Help: This registration server executes only local commands. No commands will
+have an effect on any of the registered peers.
 
 Command:                Usage:
 Local Requests:         Local commands that this Register Server executes only

@@ -1,3 +1,7 @@
+Help: The client supports multiple commands including requests to the
+Registration Server, requests to other active peers in the P2P-DI system, and
+commands executed locally.
+
 Command:                Usage:
 RS Requests:            Sends specified request to the Register Server. Register
                         Server IP address and port number for connection
