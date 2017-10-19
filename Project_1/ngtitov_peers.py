@@ -43,8 +43,8 @@ from socket import *
 from random import randint
 
 
-# The Application Layer Protocol for peer-to-RegisterServer REQUEST
-# communication of P2P-DI/1.0 protocol is defined:
+# The Application Layer Protocol for Peer-to-Register Server REQUEST message
+# format communication of P2P-DI/1.0 protocol is defined:
 """
 -------------------------------------------------
 | Type    | Method | Protocol name and version  |
@@ -61,13 +61,25 @@ from random import randint
 -------------------------------------------------
 """
 
-# The Application Layer Protocol for RegisterServer-to-peer RESPONSE
+# The Application Layer Protocol for Register Server-to-Peer RESPONSE message
+# format in response for POST REGISTER or POST KEEPALIVE request messages
 # communication of P2P-DI/1.0 protocol is defined:
 """
 -----------------------------------------------------
 | Protocol name and version | Status Code | Phrase  |
 -----------------------------------------------------
-|    Cookie: (optional)     |        Integer        |
+|         Cookie:           |        Integer        |
+-----------------------------------------------------
+|                EOP (End of Protocol)              |
+-----------------------------------------------------
+"""
+
+# The Application Layer Protocol for Register Server-to-Peer RESPONSE message
+# format in response for GET PQUERY request message communication of
+# P2P-DI/1.0 protocol is defined:
+"""
+-----------------------------------------------------
+| Protocol name and version | Status Code | Phrase  |
 -----------------------------------------------------
 |   Host:   |      IPv4     |    Port:    | Integer |
 -----------------------------------------------------
@@ -79,24 +91,54 @@ from random import randint
 -----------------------------------------------------
 """
 
-# The Application Layer Protocol for peer-to-RFCServer (another peer) REQUEST
-# communication of P2P-DI/1.0 protocol is defined:
+# The Application Layer Protocol for Register Server-to-Peer RESPONSE message
+# format in response for POST LEAVE request message communication of
+# P2P-DI/1.0 protocol is defined:
 """
------------------------------------------------------------------
-| Type  | Method | Index (optional) | Protocol name and version |
------------------------------------------------------------------
-| Host: |  IPv4  |       Port:      |          Integer          |
------------------------------------------------------------------
-|  OS:  |                       System                          |
------------------------------------------------------------------
-| Date: |         Year-Month-Day Hour-Min-Sec-mSec              |
------------------------------------------------------------------
-|                  EOP (End of Protocol)                        |
------------------------------------------------------------------
+-----------------------------------------------------
+| Protocol name and version | Status Code | Phrase  |
+-----------------------------------------------------
+|                EOP (End of Protocol)              |
+-----------------------------------------------------
 """
 
-# The Application Layer Protocol for RFCServer-to-peer RESPONSE
-# communication for RFCQuery request of P2P-DI/1.0 protocol is defined:
+
+# The Application Layer Protocol for Peer-to-RFCServer (another peer) GET
+# RFC-INDEX REQUEST message format communication of P2P-DI/1.0 protocol is
+# defined:
+"""
+----------------------------------------------
+| Type  | Method | Protocol name and version |
+----------------------------------------------
+| Host: |  IPv4  |   Port:    |   Integer    |
+----------------------------------------------
+|      OS:       |          System           |
+----------------------------------------------
+| Date: |  Year-Month-Day Hour-Min-Sec-mSec  |
+----------------------------------------------
+|         EOP (End of Protocol)              |
+----------------------------------------------
+"""
+
+# The Application Layer Protocol for Peer-to-RFCServer (another peer) GET
+# RFC REQUEST message format communication of P2P-DI/1.0 protocol is defined:
+"""
+------------------------------------------------------
+| Type  | Method | Index | Protocol name and version |
+------------------------------------------------------
+| Host: |  IPv4  | Port: |          Integer          |
+------------------------------------------------------
+|      OS:       |              System               |
+------------------------------------------------------
+|     Date:      | Year-Month-Day Hour-Min-Sec-mSec  |
+------------------------------------------------------
+|               EOP (End of Protocol)                |
+------------------------------------------------------
+"""
+
+# The Application Layer Protocol for RFC Server-to-Peer RESPONSE message
+# format in response for GET RFC-INDEX request message communication of
+# P2P-DI/1.0 protocol is defined:
 """
 -----------------------------------------------------------------------
 | Protocol name and version |        Status Code       |    Phrase    |
@@ -111,10 +153,10 @@ from random import randint
 -----------------------------------------------------------------------
 """
 
-# The Application Layer Protocol for RFCServer-to-peer RESPONSE
-# communication for Get RFC request of P2P-DI/1.0 protocol is defined.
-# Note that header protocol comes as plane text, but the requested RFC
-# document itself in the binary mode:
+# The Application Layer Protocol for RFC Server-to-Peer RESPONSE message
+# format in response for GET RFC request message communication of P2P-DI/1.0
+# protocol is defined. Note that header protocol comes as plane text, but the
+#  requested RFC document itself in the binary mode:
 """
 -----------------------------------------------------
 | Protocol name and version | Status Code | Phrase  |

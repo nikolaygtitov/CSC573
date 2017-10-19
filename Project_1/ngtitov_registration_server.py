@@ -45,8 +45,8 @@ import time
 import threading
 from socket import *
 
-# The Application Layer Protocol for peer-to-RegisterServer REQUEST
-# communication of P2P-DI/1.0 protocol is defined:
+# The Application Layer Protocol for Peer-to-Register Server REQUEST message
+# format communication of P2P-DI/1.0 protocol is defined:
 """
 -------------------------------------------------
 | Type    | Method | Protocol name and version  |
@@ -63,19 +63,42 @@ from socket import *
 -------------------------------------------------
 """
 
-# The Application Layer Protocol for RegisterServer-to-peer RESPONSE
+# The Application Layer Protocol for Register Server-to-Peer RESPONSE message
+# format in response for POST REGISTER or POST KEEPALIVE request messages
 # communication of P2P-DI/1.0 protocol is defined:
 """
 -----------------------------------------------------
 | Protocol name and version | Status Code | Phrase  |
 -----------------------------------------------------
-|    Cookie: (optional)     |        Integer        |
+|         Cookie:           |        Integer        |
+-----------------------------------------------------
+|                EOP (End of Protocol)              |
+-----------------------------------------------------
+"""
+
+# The Application Layer Protocol for Register Server-to-Peer RESPONSE message
+# format in response for GET PQUERY request message communication of
+# P2P-DI/1.0 protocol is defined:
+"""
+-----------------------------------------------------
+| Protocol name and version | Status Code | Phrase  |
 -----------------------------------------------------
 |   Host:   |      IPv4     |    Port:    | Integer |
 -----------------------------------------------------
 |   Host:   |      IPv4     |    Port:    | Integer |
 -----------------------------------------------------
 |    ...    |       ...     |     ...     |   ...   |
+-----------------------------------------------------
+|                EOP (End of Protocol)              |
+-----------------------------------------------------
+"""
+
+# The Application Layer Protocol for Register Server-to-Peer RESPONSE message
+# format in response for POST LEAVE request message communication of
+# P2P-DI/1.0 protocol is defined:
+"""
+-----------------------------------------------------
+| Protocol name and version | Status Code | Phrase  |
 -----------------------------------------------------
 |                EOP (End of Protocol)              |
 -----------------------------------------------------

@@ -32,20 +32,23 @@ IPv4 addresses or localhost are accepted.
 Python
 ### Prerequisites:
 *	Python version >= 2.7
-*	[help_peer](https://github.ncsu.edu/ngtitov/CSC573/blob/master/Project_1/help_peers) file must be at the same location (directory) where __ngtitov_peers.py__ program is executed.
-*	[help_registration_server](https://github.ncsu.edu/ngtitov/CSC573/blob/master/Project_1/help_registration_server) file must be in the same location (directory) where __help_registration_server.py__ program is executed
+*	[help_peer](https://github.ncsu.edu/ngtitov/CSC573/blob/master/Project_1/help_peers) file must be at the same location (directory) where `ngtitov_peers.py` program is executed
+*	[help_registration_server](https://github.ncsu.edu/ngtitov/CSC573/blob/master/Project_1/help_registration_server) file must be in the same location (directory) where `ngtitov_registration_server.py` program is executed
 *	User must have distinct directory (file space) where his/her RFC files is kept. Note that no other files are permitted in the same file space except RFC files
 ### Restrictions:
-*	All RFC files initially taken from the [IETF](http://www.ietf.org/) web site and then kept at each peer's file space must be in ASCII format (.text files)
+*	All RFC files initially taken from the [IETF](http://www.ietf.org/) web site and then kept at each peer's file space must ...
+    * Be in ASCII format (.text files)
+    * Follow their given (standard) naming convention by IETF (Ex: `rfc8210.txt`). Thus, __rfc__ prefix must be followed by the number (index) of the RFC
+    * Not be modified
 *	The IP address of the register server is hard-coded as localhost. In order to change the IP address of the Register server
-    * Open __ngtitov_peers.py__
-    * Search for __SERVER_IP__ definition
+    * Open `ngtitov_peers.py`
+    * Search for `SERVER_IP` definition
     * Change it to IP address of desired Register Server
-* __DO NOT__ stop either program by __\<Ctrl c\>__. Both programs are multithreaded. Use __exit__ command. 
+* __DO NOT__ stop either program by `\<Ctrl c\>`. Both programs are multi-threaded. Use `exit` command to stop all threads.
 ## P2P-DI/1.0 protocol
 For this project, specific application layer protocol is defined for the Register Server and peers to communicate among themselves.
-### Peer-to-Register Server P2P-DI/1.0 protocol communication protocol
-Peer-to-Register Server __REQUEST__ message is defined as follows:
+### Peer-to-Register Server P2P-DI/1.0 communication protocol
+Peer-to-Register Server __REQUEST__ message format is defined as follows:
 ```
 -------------------------------------------------
 | Type    | Method | Protocol name and version  |
@@ -61,12 +64,20 @@ Peer-to-Register Server __REQUEST__ message is defined as follows:
 |            EOP (End of Protocol)              |
 -------------------------------------------------
 ```
-Register Server-to-Peer __RESPONSE__ message is defined as follows:
+Register Server-to-Peer __RESPONSE__ message format in response for `POST REGISTER` or `POST KEEPALIVE` request messages is defined as follows:
 ```
 -----------------------------------------------------
 | Protocol name and version | Status Code | Phrase  |
 -----------------------------------------------------
-|    Cookie: (optional)     |        Integer        |
+|         Cookie:           |        Integer        |
+-----------------------------------------------------
+|                EOP (End of Protocol)              |
+-----------------------------------------------------
+```
+Register Server-to-Peer __RESPONSE__ message format in response for `GET PQUERY` request message is defined as follows:
+```
+-----------------------------------------------------
+| Protocol name and version | Status Code | Phrase  |
 -----------------------------------------------------
 |   Host:   |      IPv4     |    Port:    | Integer |
 -----------------------------------------------------
@@ -77,22 +88,44 @@ Register Server-to-Peer __RESPONSE__ message is defined as follows:
 |                EOP (End of Protocol)              |
 -----------------------------------------------------
 ```
-### Peer-to-Peer (RFC Server) P2P-DI/1.0 protocol communication protocol
-Peer-to-RFC Server (another peer) __REQUEST__ message is defined as follows:
+Register Server-to-Peer __RESPONSE__ message  format in response for `POST LEAVE` request message is defined as follows:
 ```
------------------------------------------------------------------
-| Type  | Method | Index (optional) | Protocol name and version |
------------------------------------------------------------------
-| Host: |  IPv4  |       Port:      |          Integer          |
------------------------------------------------------------------
-|  OS:  |                       System                          |
------------------------------------------------------------------
-| Date: |         Year-Month-Day Hour-Min-Sec-mSec              |
------------------------------------------------------------------
-|                  EOP (End of Protocol)                        |
------------------------------------------------------------------
+-----------------------------------------------------
+| Protocol name and version | Status Code | Phrase  |
+-----------------------------------------------------
+|                EOP (End of Protocol)              |
+-----------------------------------------------------
 ```
-RFC Server-to-peer __RESPONSE__ message (based on GET RFC-INDEX request) is defined as follows:
+### Peer-to-Peer (Peer-to-RFC Server) P2P-DI/1.0 communication protocol
+Peer-to-RFC Server (another peer) `GET RFC-INDEX` __REQUEST__ message format is defined as follows:
+```
+----------------------------------------------
+| Type  | Method | Protocol name and version |
+----------------------------------------------
+| Host: |  IPv4  |   Port:    |   Integer    |
+----------------------------------------------
+|      OS:       |          System           |
+----------------------------------------------
+| Date: |  Year-Month-Day Hour-Min-Sec-mSec  |
+----------------------------------------------
+|         EOP (End of Protocol)              |
+----------------------------------------------
+```
+Peer-to-RFC Server (another peer) `GET RFC` __REQUEST__ message format is defined as follows:
+```
+------------------------------------------------------
+| Type  | Method | Index | Protocol name and version |
+------------------------------------------------------
+| Host: |  IPv4  | Port: |          Integer          |
+------------------------------------------------------
+|      OS:       |              System               |
+------------------------------------------------------
+|     Date:      | Year-Month-Day Hour-Min-Sec-mSec  |
+------------------------------------------------------
+|               EOP (End of Protocol)                |
+------------------------------------------------------
+```
+RFC Server-to-peer __RESPONSE__ message format in response for `GET RFC-INDEX` request message is defined as follows:
 ```
 -----------------------------------------------------------------------
 | Protocol name and version |        Status Code       |    Phrase    |
@@ -106,7 +139,7 @@ RFC Server-to-peer __RESPONSE__ message (based on GET RFC-INDEX request) is defi
 |                        EOP (End of Protocol)                        |
 -----------------------------------------------------------------------
 ```
-RFC Server-to-peer __RESPONSE__ message (based on GET RFC \#)is defined as follows. Note that header protocol comes as plane text, but the requested RFC document itself in the binary mode:
+RFC Server-to-Peer __RESPONSE__ message format in response for `GET RFC` request message is defined as follows. Note that protocol itself comes as plane text, but the requested RFC document in the binary mode:
 ```
 -----------------------------------------------------
 | Protocol name and version | Status Code | Phrase  |
