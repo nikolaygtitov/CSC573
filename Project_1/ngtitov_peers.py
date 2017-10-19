@@ -244,7 +244,7 @@ class RfcServer(threading.Thread):
     def __init__(self):
         """Initiates RfcServer class with main thread."""
         threading.Thread.__init__(self)
-        self.running = True
+        self.running = False
         self.port = None
 
     def run(self):
@@ -253,18 +253,18 @@ class RfcServer(threading.Thread):
         # that new port.
         self.port = randint(65400, 65500)
         rfc_server_socket = socket(AF_INET, SOCK_STREAM)
-        try:
-            rfc_server_socket.bind(('', self.port))
-            # RFC Server begins listening for incoming TCP requests from other
-            # peers by queueing up as many as 5 connect requests
-            rfc_server_socket.listen(5)
-            print 'RFC server is initialized and listing ...'
-        except error, (value, message):
-            print 'Exception while creating and binding RFC welcoming socket:'
-            print message
-            rfc_server_socket.close()
-            del rfc_server_socket
-            return
+        while not self.running:
+            try:
+                rfc_server_socket.bind(('', self.port))
+                # RFC Server begins listening for incoming TCP requests from
+                # other peers by queueing up as many as 5 connect requests
+                rfc_server_socket.listen(5)
+                self.running = True
+                print 'RFC server is initialized and listing ...'
+            except error, (value, message):
+                print 'Exception while creating and binding RFC Server socket:'
+                print message
+                self.port = randint(65400, 65500)
         # Loop forever waiting for new connections from different peers
         while self.running:
             try:
@@ -282,6 +282,8 @@ class RfcServer(threading.Thread):
                     print 'Shut down the RFC server welcoming port ...'
                     connection_socket.close()
                     del connection_socket
+                    rfc_server_socket.close()
+                    del rfc_server_socket
 
     def stop(self):
         """Stops the main thread of the RFC Server.
