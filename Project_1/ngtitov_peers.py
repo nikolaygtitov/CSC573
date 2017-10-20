@@ -39,6 +39,7 @@ import threading
 import re
 import os
 import time
+import math
 from socket import *
 from random import randint
 
@@ -887,16 +888,21 @@ def do_test():
         start_time = time.time()
         send_peer_rfc_request(int(rfc.index))
         finish_time = time.time()
-        item_list.append(finish_time - start_time)
-        item_list.append(finish_time - cumulative_start_time)
+        item_list.append((finish_time - start_time) * math.pow(10, 3))
+        item_list.append((finish_time - cumulative_start_time) * math.pow(10,
+                                                                          3))
         item_dict[i + 1] = item_list
     cumulative_finish_time = time.time()
     for key, info_list in item_dict.iteritems():
-        print '{}: RFC {} downloaded time: {} seconds. Cumulative download ' \
-              'time: {} seconds'.format(key, info_list[0], info_list[1],
-                                        info_list[2])
-    print 'Cumulative download time for 50 RFSc is: {} seconds'.format(
-        cumulative_finish_time - cumulative_start_time)
+        print '{}: RFC {} download time: {} msec. Cumulative ' \
+              'download time: {} msec'.format(key, info_list[0], info_list[1],
+                                              info_list[2])
+    print 'Cumulative download time for 50 RFSc: {} msec'.format(
+        (cumulative_finish_time - cumulative_start_time) * math.pow(10, 3))
+    # print 'Only cumulative time for each RFC:'
+    # for key, info_list in item_dict.iteritems():
+    #    print '{}'.format(info_list[2])
+    # print 'Done...'
 
 
 # Actual program starts here.
