@@ -205,8 +205,7 @@ while not os.path.isdir(file_space):
     if file_space.upper() == 'EXIT':
         exit()
     print file_space + ': No such file or directory'
-    file_space = raw_input('> Please specify YOUR own file space (relative '
-                           'directory: ')
+    file_space = raw_input('> Please specify YOUR own file space (directory): ')
 
 # Determine IP address of this RFC server
 rfc_host_server = gethostbyname(gethostname())
