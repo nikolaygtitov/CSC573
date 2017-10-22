@@ -554,6 +554,8 @@ def send_rs_request():
         new_main_rfc_server_thread = RfcServer()
         new_main_rfc_server_thread.start()
         rfc_server_main_thread_list.append(new_main_rfc_server_thread)
+        while not rfc_server_main_thread_list[0].running:
+            print 'Initializing RFC server ...'
     client_socket = socket(AF_INET, SOCK_STREAM)
     try:
         client_socket.connect((SERVER_IP, SERVER_PORT))
