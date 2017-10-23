@@ -32,19 +32,21 @@ IPv4 addresses or localhost are accepted.
 Python
 ### Prerequisites:
 *	Python version >= 2.7
+*  OS: any Linux distribution (Ubuntu, RedHat, etc) that has Python version >=2.7
 *	[help_peer](https://github.ncsu.edu/ngtitov/CSC573/blob/master/Project_1/help_peers) file must be at the same location (directory) where `ngtitov_peers.py` program is executed
 *	[help_registration_server](https://github.ncsu.edu/ngtitov/CSC573/blob/master/Project_1/help_registration_server) file must be in the same location (directory) where `ngtitov_registration_server.py` program is executed
 *	User must have distinct directory (file space) where his/her RFC files is kept. Note that no other files are permitted in the same file space except RFC files
+*  Either an absolute or relative path are allowed to specify the user's directory (file space) that contains RFC documents   
 ### Restrictions:
 *	All RFC files initially taken from the [IETF](http://www.ietf.org/) web site and then kept at each peer's file space must ...
-    * Be in ASCII format (.text files)
+    * Be in ASCII format (.txt files)
     * Follow their given (standard) naming convention by IETF (Ex: `rfc8210.txt`). Thus, __rfc__ prefix must be followed by the number (index) of the RFC
     * Not be modified
 *	The IP address of the register server is hard-coded as localhost. In order to change the IP address of the Register server
     * Open `ngtitov_peers.py`
     * Search for `SERVER_IP` definition
     * Change it to IP address of desired Register Server
-* __DO NOT__ stop either program by `\<Ctrl c\>`. Both programs are multi-threaded. Use `exit` command to stop all threads.
+* __DO NOT__ stop either program by `<Ctrl c>`. Both programs are multi-threaded. Use `exit` command to stop all threads.
 ## P2P-DI/1.0 protocol
 For this project, specific application layer protocol is defined for the Register Server and peers to communicate among themselves.
 ### Peer-to-Register Server P2P-DI/1.0 communication protocol
