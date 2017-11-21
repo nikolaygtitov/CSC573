@@ -6,7 +6,7 @@ To execute the P2MP-FTP Client (Sender) program run:
 ```
  python ngtitov_p2mpclient.py arg1 arg2 ... arg(i) arg(i+1) arg(i+2) arg(i+3)
  ```
- where at least 4 (four) arguments are required and specifed as follows:
+ where at least 4 (four) arguments are required and specified as follows:
  *	arg1, arg2, . . . , arg(i):
 
     Host name(s) or IPv4 address(es) of the Server(s). Can take any number of servers.
@@ -29,7 +29,7 @@ To execute the P2MP-FTP Server (Receiver) program run:
 ```
  python ngtitov_p2mpserver.py arg1 arg2 arg3
  ```
- where all 3 (three) arguments are required and specifed as follows:
+ where all 3 (three) arguments are required and specified as follows:
  *  arg1:
  
     Port number of the Server to which the Server is listening. The port number must be in the range of allowed ports `(1024, 65535]`. The firewall on the Servers must be disabled.
@@ -84,9 +84,9 @@ Where each field is defined as follows:
    It is computed in the same way as the UDP checksum described in the text book, J. F. Kurose and K. W. Ross, Computer Networking, 7th ed., Pearson. ISBN: 0-13-359414-9 in the section 3.3.2 on page 202. UDP at the sender side performs the 1s complement of the sum of alt the 16-bit words in the segment, with any overflow encountered during the sum being wrapped around. This result is put in the checksum field of the segment. At the receiver, all four 16-bit words are added, including the checksum. If no errors are introduced into the packet, then clearly the sum at the receiver will be `1111111111111111`. If one of the bits is a 0, then we know that errors have been introduced into the packet.
 *  Data Packet Indicator:
 
-   It may have two different values indicating that this is a data packet.
-   *  `0101010101010101` value indicating that non-last sequenced data packet
-   *  `0101010101010111` value indicating that last sequenced data packet
+   It may have two different values indicating a data packet.
+   *  `0101010101010101` value indicates the non-last sequenced data packet to be transmitted/received
+   *  `0101010101010111` value indicates the last sequenced data packet to be transmitted/received
 * Payload:
 
   The actual payload or data of the file being transmitted.
@@ -95,7 +95,7 @@ Where each field is defined as follows:
    The sequence number of the next byte of data that the P2MP-FTP Server (Receiver) is expecting/waiting for
 *  ACK Packet Indicator:
 
-   It has the value `1010101010101010`, indicating that this is an ACK packet.
+   It has the value `1010101010101010` is the indication of an ACK packet.
 
 ## Contributing
 Please contact the author for any contributions.
