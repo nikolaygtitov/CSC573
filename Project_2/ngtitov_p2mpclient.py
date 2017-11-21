@@ -6,11 +6,15 @@ Project 2
 This program implements the solution the Project 2 assignment:
 Point-to-Multipoint File Transfer Protocol (P2MP-FTP).
 
-P2MP-FTP - protocol that provides a simple service: transferring a file from
-one host (p2mp client) to multiple destinations (p2mp servers).P2MP-FTP uses
-UDP to send packets from the sending host (p2mp client) to each of the
-destinations (p2mp servers). In order to provide reliable data transfer
-service, it utilizes the Stop-and-Wait ARQ.
+P2MP-FTP - protocol that provides a FTP sophisticated service: transferring a
+file from one host (p2mp client) to multiple destinations (p2mp servers).
+P2MP-FTP uses UDP to send packets from the sending host (p2mp client) to each
+of the destinations (p2mp servers) as opposed to the traditional FTP where
+TCP is used to ensure reliable data transmission of files from one sender to
+one receiver. In order to provide reliable data transfer service, P2MP-FTP
+utilizes the Stop-and-Wait automatic repeat request (ARQ). Hence, using the
+unreliable UDP protocol, P2MP-FTP allows implementation of a transport layer
+service such as reliable transfer in user space.
 
 This is P2MP-FTP Client (Sender) implementation.
 It reads data from a file specified in the command line and utilizes reliable
@@ -24,11 +28,11 @@ a segment that includes a header and MSS bytes of data; as a result,
 all segments sent, except possibly for the very last one, will have exactly
 MSS bytes of data. The client transmits each segment separately to each of
 the receivers, and waits until it has received ACKs from every receiver
-before it can transmit the next segment. Every time a segment is
-transmitted, the sender sets a timeout counter. If the counter expires before
-ACKs from all receivers have been received, then the sender re-transmits the
-segment, but only to those receivers from which it has not received an ACK
-yet. This process repeats until all ACKs have been received.
+before it can transmit the next segment. Every time a segment is transmitted,
+the sender sets a timeout counter. If the counter expires before ACKs from
+all receivers have been received, then the sender re-transmits the segment,
+but only to those receivers from which it has not received an ACK yet. This
+process repeats until all ACKs have been received.
 
 Execute the program run:
  > python ngtitov_p2mpclient.py arg1 arg2 ... arg(i) arg(i+1) arg(i+2) arg(i+3)
@@ -84,6 +88,7 @@ import time
 
 # Initialization of constants
 DATA_PACKET = 0b0101010101010101
+LAST_DATA_PACKET = 0b0101010101010111
 ACK = 0b1010101010101010
 HEADER_SIZE = 8
 MAX_MSS = 2048
@@ -105,6 +110,8 @@ def rdt_send():
     complement of it), construct the header and transmit the packet.
     """
     seq_number = 0
+    bytes_sent = 0
+    file_size = os.stat(file_name).st_size
     file_in = open(file_name, 'rb')
     payload = file_in.read(mss - HEADER_SIZE)
     try:
@@ -113,7 +120,12 @@ def rdt_send():
                 seq_number = seq_number - 0xffffffff
             # Get the checksum and header
             checksum = get_checksum(seq_number, payload)
-            header = get_header(seq_number, checksum)
+            if bytes_sent + len(payload) < file_size:
+                bytes_sent = bytes_sent + len(payload)
+                header = get_header(seq_number, checksum)
+            else:
+                header = get_header(seq_number, checksum,
+                                    indicator=LAST_DATA_PACKET)
             retransmit = True
             # Continuously retransmit the same datagram until all P2MP-FTP
             # Servers received it

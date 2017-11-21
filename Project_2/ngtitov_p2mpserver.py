@@ -6,11 +6,15 @@ Project 2
 This program implements the solution the Project 2 assignment:
 Point-to-Multipoint File Transfer Protocol (P2MP-FTP).
 
-P2MP-FTP - protocol that provides a simple service: transferring a file from
-one host (p2mp client) to multiple destinations (p2mp servers).P2MP-FTP uses
-UDP to send packets from the sending host (p2mp client) to each of the
-destinations (p2mp servers). In order to provide reliable data transfer
-service, it utilizes the Stop-and-Wait ARQ.
+P2MP-FTP - protocol that provides a FTP sophisticated service: transferring a
+file from one host (p2mp client) to multiple destinations (p2mp servers).
+P2MP-FTP uses UDP to send packets from the sending host (p2mp client) to each
+of the destinations (p2mp servers) as opposed to the traditional FTP where
+TCP is used to ensure reliable data transmission of files from one sender to
+one receiver. In order to provide reliable data transfer service, P2MP-FTP
+utilizes the Stop-and-Wait automatic repeat request (ARQ). Hence, using the
+unreliable UDP protocol, P2MP-FTP allows implementation of a transport layer
+service such as reliable transfer in user space.
 
 This is P2MP-FTP Server (Receiver) implementation.
 It starts listening on the well-known port specified by user in the command
@@ -74,6 +78,7 @@ import os
 
 # Initialization of constants
 DATA_PACKET = 0b0101010101010101
+LAST_DATA_PACKET = 0b0101010101010111
 ACK = 0b1010101010101010
 HEADER_SIZE = 8
 MAX_MSS = 2048
@@ -96,7 +101,8 @@ def rdt_receive():
         server_socket.bind(('', server_port))
         seq_number = 0
         print 'P2MP-FTP Server is initialized and listing ...'
-        while True:
+        receive = True
+        while receive:
             datagram, client_address = server_socket.recvfrom(MAX_MSS)
             random_number = random()
             # Discard or process received packet
@@ -116,11 +122,16 @@ def rdt_receive():
                         # Update sequence number and write payload to the file
                         seq_number = new_seq_number
                         file_out.write(payload)
+                        # Check if this is the last packet in sequence
+                        if int(header[6:8].encode('hex'), 16) == \
+                                LAST_DATA_PACKET:
+                            receive = False
+        print 'Complete!'
     except error, (value, message):
         print 'Exception while creating and binding RFC Server socket:'
         print message
     except KeyboardInterrupt:
-        print 'Goodbye!'
+        print 'Not completed. Goodbye!'
     file_out.close()
     server_socket.close()
     del server_socket
@@ -139,7 +150,7 @@ def validation(header, payload, seq_number):
         seq_number: expected sequence number to verify in-sequence order
 
     Returns:
-        - Next expected sequence number
+        - Next expected sequence number (seq_number + segment length)
           If validation is successful and packet is in-sequence order
         - Current sequence number
           If packet is out-of-sequence
@@ -167,9 +178,10 @@ def validation(header, payload, seq_number):
         checksum = wrap_around(checksum, word)
     # Validate each field
     try:
-        assert rcv_indicator == DATA_PACKET, 'Packet dropped, not a data packet'
+        assert rcv_indicator in [DATA_PACKET, LAST_DATA_PACKET], \
+            'Packet dropped, not a data packet'
         assert checksum == 0xffff, \
-            'Packet is corrupted - dropping it [checksum = {}]'.format(
+            'Packet is corrupted, dropping it [checksum = {}]'.format(
                 bin(checksum).lstrip('-0b').zfill(16))
     except AssertionError, _e:
         print _e
