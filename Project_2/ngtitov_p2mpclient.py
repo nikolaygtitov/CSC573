@@ -126,11 +126,11 @@ def rdt_send():
             else:
                 header = get_header(seq_number, checksum,
                                     indicator=LAST_DATA_PACKET)
-            # Transmit this datagram and determine whether any of P2MP-FTP
-            # Servers have not received this segment
+            # Transmit this datagram and determine what P2MP-FTP Servers did
+            # and did not ACKed this segment
             retransmit = rdt_send_datagram(header + payload, seq_number)
-            # Continuously retransmit the same datagram until all P2MP-FTP
-            # Servers received it
+            # Continuously re-transmit the same datagram until all P2MP-FTP
+            # Servers ACKed it
             while retransmit:
                 retransmit = rdt_send_datagram(header + payload, seq_number,
                                                is_retransmission=True)
