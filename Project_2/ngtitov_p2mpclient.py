@@ -293,7 +293,7 @@ class Host:
 
 
 # Actual program starts here
-# Initialize dictionary of host objects and timeout interval
+# Initialize dictionary of host objects
 dict_hosts = {}
 timeout_interval = 0
 try:
