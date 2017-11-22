@@ -126,11 +126,14 @@ def rdt_send():
             else:
                 header = get_header(seq_number, checksum,
                                     indicator=LAST_DATA_PACKET)
-            retransmit = True
+            # Transmit this datagram and determine whether any of P2MP-FTP
+            # Servers have not received this segment
+            retransmit = rdt_send_datagram(header + payload, seq_number)
             # Continuously retransmit the same datagram until all P2MP-FTP
             # Servers received it
             while retransmit:
-                retransmit = rdt_send_datagram(header + payload, seq_number)
+                retransmit = rdt_send_datagram(header + payload, seq_number,
+                                               is_retransmission=True)
             # Get header field for the next packet
             payload = file_in.read(mss - HEADER_SIZE)
             seq_number = seq_number + mss
@@ -204,7 +207,7 @@ def get_header(seq_number, checksum, indicator=DATA_PACKET):
     return seq_number_hex + checksum_hex + indicator_hex
 
 
-def rdt_send_datagram(datagram, seq_number):
+def rdt_send_datagram(datagram, seq_number, is_retransmission=False):
     """Sends datagram to all the P2MP-FTP Servers via multi-cast.
 
     Create new UDP socket with timeout interval to transfer datagram to 2MP-FTP
@@ -216,6 +219,9 @@ def rdt_send_datagram(datagram, seq_number):
     Args:
         datagram: datagram in a byte representation
         seq_number: expected sequence number ACKed by the P2MP-FTP Servers
+        is_retransmission: boolean indicates whether the sender re-transmits
+                           this datagram only to those P2MP-FTP Servers
+                           (Receivers) from which it has not received an ACK yet
 
     Returns:
         Boolean indicating whether retransmit is required or not
@@ -236,7 +242,8 @@ def rdt_send_datagram(datagram, seq_number):
             ack_packet, (server_ip, port) = client_socket.recvfrom(ACK_SIZE)
             dict_hosts[server_ip].ack_packet = ack_packet
     except timeout:
-        print 'Timeout, sequence number = {}'.format(seq_number)
+        if is_retransmission:
+            print 'Timeout, sequence number = {}'.format(seq_number)
         # Determine what P2MP-FTP Servers received data packets correctly
         extract_servers_ack(seq_number)
     client_socket.close()
