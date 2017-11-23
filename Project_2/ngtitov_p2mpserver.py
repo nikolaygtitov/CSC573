@@ -105,8 +105,8 @@ def rdt_receive():
         while receive:
             datagram, client_address = server_socket.recvfrom(MAX_MSS)
             random_number = random()
-            # Discard or process received packet
-            if probability >= random_number:
+            # Discard (r <= p) or process received packet (r > p)
+            if probability < random_number:
                 # Process the data packet
                 header = datagram[:HEADER_SIZE]
                 payload = datagram[HEADER_SIZE:]
