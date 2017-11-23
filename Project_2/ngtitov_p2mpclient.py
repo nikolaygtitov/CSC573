@@ -126,14 +126,10 @@ def rdt_send():
             else:
                 header = get_header(seq_number, checksum,
                                     indicator=LAST_DATA_PACKET)
-            # Transmit this datagram and determine what P2MP-FTP Servers did
-            # and did not ACKed this segment
-            retransmit = rdt_send_datagram(header + payload, seq_number)
             # Continuously re-transmit the same datagram until all P2MP-FTP
-            # Servers ACKed it
-            while retransmit:
-                retransmit = rdt_send_datagram(header + payload, seq_number,
-                                               is_retransmission=True)
+            # Servers correctly ACKed it
+            while rdt_send_datagram(header + payload, seq_number):
+                pass
             # Get header field for the next packet
             payload = file_in.read(mss - HEADER_SIZE)
             seq_number = seq_number + mss
@@ -207,11 +203,11 @@ def get_header(seq_number, checksum, indicator=DATA_PACKET):
     return seq_number_hex + checksum_hex + indicator_hex
 
 
-def rdt_send_datagram(datagram, seq_number, is_retransmission=False):
+def rdt_send_datagram(datagram, seq_number):
     """Sends datagram to all the P2MP-FTP Servers via multi-cast.
 
-    Create new UDP socket with timeout interval to transfer datagram to 2MP-FTP
-    Servers. The multi-cast technique is used to send the same (one)
+    Create new UDP socket with timeout interval to transfer datagram to
+    P2MP-FTP Servers. The multi-cast technique is used to send the same (one)
     datagram to all P2MP-FTP Servers. After datagram is sent to all P2MP-FTP
     Servers, it waits for ACK responses from P2MP-FTP Servers. Calls helper
     function to determine what P2MP-FTP Servers received data packets correctly.
@@ -219,12 +215,9 @@ def rdt_send_datagram(datagram, seq_number, is_retransmission=False):
     Args:
         datagram: datagram in a byte representation
         seq_number: expected sequence number ACKed by the P2MP-FTP Servers
-        is_retransmission: boolean indicates whether the sender re-transmits
-                           this datagram only to those P2MP-FTP Servers
-                           (Receivers) from which it has not received an ACK yet
 
     Returns:
-        Boolean indicating whether retransmit is required or not
+        Boolean retransmit indicating whether retransmit is required or not
     """
     retransmit = False
     client_socket = socket(AF_INET, SOCK_DGRAM)
@@ -235,42 +228,66 @@ def rdt_send_datagram(datagram, seq_number, is_retransmission=False):
         for name, host in dict_hosts.iteritems():
             # No need to retransmit datagram if server has already received it
             if host.ack != seq_number:
+                host.ack_response = False
                 retransmit = True
                 client_socket.sendto(datagram, (name, server_port))
-        # Read ACKs until timeout is triggered
-        while retransmit:
+        # Read ACKs until whether all P2MP-FTP Servers ACKed this datagram or
+        # timeout is triggered
+        while not all_responses_received():
             ack_packet, (server_ip, port) = client_socket.recvfrom(ACK_SIZE)
-            dict_hosts[server_ip].ack_packet = ack_packet
+            extract_server_ack(seq_number, ack_packet, server_ip)
     except timeout:
-        if is_retransmission:
-            print 'Timeout, sequence number = {}'.format(seq_number)
-        # Determine what P2MP-FTP Servers received data packets correctly
-        extract_servers_ack(seq_number)
+        print 'Timeout, sequence number = {}'.format(seq_number)
     client_socket.close()
     del client_socket
     return retransmit
 
 
-def extract_servers_ack(seq_number):
-    """Extracts ACKs received from P2MP-FTP Servers as response.
+def extract_server_ack(seq_number, ack_packet, server_ip):
+    """Extracts the ACK received from P2MP-FTP Server as response.
+
+    It extracts the packet received from the socket and verifies whether this
+    is really ACK received from one of the P2MP-FTP Servers as response after
+    sending a data packet. This packet can be corrupted, or not P2MP-FTP
+    protocol packet or not even from P2MP-FTP Server. Each case is handled
+    gracefully with an exception. If this is expected ACK, it updates the host
+    object accordingly.
 
     Args:
-        seq_number: expected sequence number ACKed by the P2MP-FTP Servers
+        seq_number: expected sequence number ACKed by a P2MP-FTP Server
+        ack_packet: hexadecimal encoded ACK packet that is received from a
+                    P2MP-FTP Server as response and retrieved from the socket
+        server_ip: IPv4 address of a P2MP-FTP Server
+    """
+    try:
+        dict_hosts[server_ip].ack_response = True
+        # Extract received ACKed sequence number, zero field and ACK indicator
+        rcv_ack = int(ack_packet[:4].encode('hex'), 16)
+        rcv_zero_field = int(ack_packet[4:6].encode('hex'), 16)
+        rcv_ack_indicator = int(ack_packet[6:8].encode('hex'), 16)
+        # Verify whether this server responded with an ACK and in-sequence ACK
+        assert rcv_ack_indicator == ACK
+        assert rcv_zero_field == 0
+        assert rcv_ack == seq_number
+        dict_hosts[server_ip].ack = seq_number
+    except (AssertionError, KeyError, TypeError):
+        return
+
+
+def all_responses_received():
+    """Verifies whether ACK is received from all P2MP-FTP Servers.
+
+    It must not ACK the segment correctly, only need to check if the response
+    is received.
+
+    Returns:
+        Boolean True or False indicating whether all P2MP-FTP Servers ACKed
+        or responded to the outstanding packet or not
     """
     for name, host in dict_hosts.iteritems():
-        if host.ack_packet is not None:
-            # Extract received ACKed sequence number, zero field and ACK
-            # indicator
-            rcv_ack = int(host.ack_packet[:4].encode('hex'), 16)
-            rcv_zero_field = int(host.ack_packet[4:6].encode('hex'), 16)
-            rcv_ack_indicator = int(host.ack_packet[6:8].encode('hex'), 16)
-            try:
-                assert rcv_ack == seq_number
-                assert rcv_zero_field == 0
-                assert rcv_ack_indicator == ACK
-                dict_hosts[name].ack = seq_number
-            except AssertionError:
-                pass
+        if not host.ack_response:
+            return False
+    return True
 
 
 class Host:
@@ -282,14 +299,15 @@ class Host:
 
     Attributes:
         name: hostname of the P2MP-FTP Server
-        ack_packet: content of the latest received ACK
         ack: ACK for the last successfully received in-sequence packet
-    """
+        ack_response: boolean indicating whether not response packet (ACK) is
+                      received from a P2MP-FTP Server
+   """
     def __init__(self, name):
         """Initiates Host object with default attributes."""
         self.name = name
-        self.ack_packet = None
         self.ack = None
+        self.ack_response = False
 
 
 # Actual program starts here
