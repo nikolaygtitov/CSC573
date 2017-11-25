@@ -111,21 +111,30 @@ def rdt_receive():
                 header = datagram[:HEADER_SIZE]
                 payload = datagram[HEADER_SIZE:]
                 # Do validation on checksum, data indicator and sequence number
-                new_seq_number = validation(header, payload, seq_number)
-                # Send response only if packet is received correctly or
-                # received out of sequence
-                if new_seq_number is not None:
+                rcv_seq_number = validation(header, payload, seq_number)
+                # Received packet is in-sequence
+                if rcv_seq_number is not None and rcv_seq_number == seq_number:
                     # Construct the ACK and send it back to the client
-                    ack_packet = ack_encapsulation(seq_number)
+                    ack_packet = ack_encapsulation(rcv_seq_number)
                     server_socket.sendto(ack_packet, client_address)
-                    if new_seq_number != seq_number:
-                        # Update sequence number and write payload to the file
-                        seq_number = new_seq_number
-                        file_out.write(payload)
-                        # Check if this is the last packet in sequence
-                        if int(header[6:8].encode('hex'), 16) == \
-                                LAST_DATA_PACKET:
-                            receive = False
+                    # Write payload to the file
+                    file_out.write(payload)
+                    # Compute next expected sequence number
+                    seq_number = seq_number + len(header) + len(payload)
+                    if seq_number > 0xffffffff:
+                        seq_number = seq_number - 0xffffffff
+                    # Check if this is the last packet in sequence
+                    if int(header[6:8].encode('hex'), 16) == LAST_DATA_PACKET:
+                        receive = False
+                # Received packet is out-of-sequence
+                elif rcv_seq_number is not None:
+                    # Construct the ACK and send it back to the client
+                    if rcv_seq_number < seq_number:
+                        ack_packet = ack_encapsulation(rcv_seq_number)
+                    else:
+                        # ACK for the last received in-sequence packet
+                        ack_packet = ack_encapsulation(seq_number)
+                    server_socket.sendto(ack_packet, client_address)
         print 'Complete!'
     except error, (value, message):
         print 'Exception while creating and binding RFC Server socket:'
@@ -141,8 +150,8 @@ def validation(header, payload, seq_number):
     """Performs validation on the received packet.
 
     It extracts sequence number, checksum and indicator from the header of
-    the received data packet and perform validation on each filed to ensure
-    this expected data packet.
+    the received data packet and performs validation on each field to ensure
+    this is expected data packet.
 
     Args:
         header: the header of the datagram - 64 bits (8 bytes)
@@ -150,10 +159,9 @@ def validation(header, payload, seq_number):
         seq_number: expected sequence number to verify in-sequence order
 
     Returns:
-        - Next expected sequence number (seq_number + segment length)
-          If validation is successful and packet is in-sequence order
-        - Current sequence number
-          If packet is out-of-sequence
+        - ACK number for the received packet
+          Either if validation is successful and packet is in-sequence order
+          Or if packet is out-of-sequence
         - None
           If validation fails (checksum or not P2MP-FTP protocol)
     """
@@ -190,13 +198,10 @@ def validation(header, payload, seq_number):
         assert seq_number == rcv_seq_number, \
             'Packet loss, sequence number = {}'.format(rcv_seq_number)
     except AssertionError, _e:
+        # The packet is out-of-sequence
         print _e
-        return seq_number
-    # Compute next expected sequence number
-    new_seq_number = rcv_seq_number + len(header) + len(payload)
-    if new_seq_number > 0xffffffff:
-        new_seq_number = new_seq_number - 0xffffffff
-    return new_seq_number
+    # Return ACK for the last received in-sequence packet
+    return rcv_seq_number
 
 
 def wrap_around(a, b):
